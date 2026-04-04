@@ -157,25 +157,68 @@ class QuantPipeline:
         returns_dict = returns_dict or {}
         risk_details = []
 
-        # 1. 변동성 타겟팅 — 비중 조정
-        vol_adjustments = {}
-        adjusted_weights = {}
+        # 0. 공매도 불가 — 음수 비중 자동 클리핑 (개인투자자 제약)
+        clipped_tickers = [t for t, w in optimal_weights.items() if w < 0]
+        clipped_weights = {t: max(0.0, w) for t, w in optimal_weights.items()}
 
-        for ticker, weight in optimal_weights.items():
-            rets = returns_dict.get(ticker, [])
-            if rets:
-                result = self.vol_targeter.scale(weight, rets)
-                adjusted_weights[ticker] = result.vol_scaled_weight
-                vol_adjustments[ticker] = result.scale_factor
+        # 음수가 있었을 때만 재정규화 (없으면 원래 비중 유지 → 현금 비중 보존)
+        if clipped_tickers:
+            clip_total = sum(clipped_weights.values())
+            if clip_total > 0:
+                clipped_weights = {t: w / clip_total for t, w in clipped_weights.items()}
+            names = [factor_scores.get(t, {}).get("name", t) for t in clipped_tickers]
+            risk_details.append(f"공매도 불가: {', '.join(names)} 숏 신호 → 0% 클리핑 + 재정규화")
+
+        # 1. 포트폴리오 레벨 변동성 타겟팅
+        #    종목별이 아닌 포트폴리오 전체 vol을 target에 맞춤
+        #    이전: 종목별 scale → 현금 86% (비현실적)
+        #    현재: 포트폴리오 vol 추정 → 전체 스케일링 (현실적 비중)
+        vol_adjustments = {}
+        adjusted_weights = dict(clipped_weights)
+
+        if returns_dict:
+            import math
+            # 포트폴리오 일간 수익률 추정 (가중합)
+            min_len = min(
+                (len(returns_dict[t]) for t in clipped_weights if returns_dict.get(t)),
+                default=0,
+            )
+            if min_len > 30:
+                port_daily = []
+                for i in range(min_len):
+                    day_ret = sum(
+                        clipped_weights.get(t, 0) * returns_dict[t][i]
+                        for t in clipped_weights
+                        if t in returns_dict and i < len(returns_dict[t])
+                    )
+                    port_daily.append(day_ret)
+
+                # EWMA 포트폴리오 변동성
+                port_vol_est = self.vol_targeter.estimate_vol(port_daily)
+
+                if port_vol_est > 0:
+                    portfolio_scale = min(
+                        self.config.target_vol / port_vol_est,
+                        self.config.max_leverage,
+                    )
+                    for ticker in adjusted_weights:
+                        adjusted_weights[ticker] *= portfolio_scale
+                        vol_adjustments[ticker] = portfolio_scale
+                else:
+                    for ticker in adjusted_weights:
+                        vol_adjustments[ticker] = 1.0
             else:
-                adjusted_weights[ticker] = weight
+                for ticker in adjusted_weights:
+                    vol_adjustments[ticker] = 1.0
+        else:
+            for ticker in adjusted_weights:
                 vol_adjustments[ticker] = 1.0
 
-        # 비중 정규화 (합이 1 이하가 되도록)
+        # 비중 상한 (max_leverage 초과 방지)
         total_w = sum(adjusted_weights.values())
-        if total_w > 1.0:
+        if total_w > self.config.max_leverage:
             for ticker in adjusted_weights:
-                adjusted_weights[ticker] /= total_w
+                adjusted_weights[ticker] *= self.config.max_leverage / total_w
 
         # 2. 터뷸런스 인덱스
         turb = 0.0
