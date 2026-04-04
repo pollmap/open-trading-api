@@ -123,16 +123,18 @@ class PortfolioAnalyzer:
         self,
         returns: pd.DataFrame,
         weights: Optional[Dict[str, float]] = None,
-        risk_free_rate: float = 0.03,
+        risk_free_rate: Optional[float] = None,
         trading_days: int = 252,
     ):
         """
         Args:
             returns: 일별 수익률 DataFrame (columns=종목, index=날짜)
             weights: 비중 딕셔너리. None이면 동일 비중.
-            risk_free_rate: 무위험 이자율 (연율)
+            risk_free_rate: 무위험 이자율 (연율). None이면 0.035 fallback
             trading_days: 연간 거래일 수
         """
+        if risk_free_rate is None:
+            risk_free_rate = 0.035
         self.returns = returns.dropna()
         self.symbols = list(returns.columns)
         self.risk_free_rate = risk_free_rate
@@ -393,10 +395,10 @@ class PortfolioAnalyzer:
         cls,
         prices: pd.DataFrame,
         weights: Optional[Dict[str, float]] = None,
-        risk_free_rate: float = 0.03,
+        risk_free_rate: Optional[float] = None,
     ) -> "PortfolioAnalyzer":
         """가격 데이터에서 분석기 생성
-        
+
         Args:
             prices: 일별 가격 DataFrame (columns=종목, index=날짜)
             weights: 비중 딕셔너리

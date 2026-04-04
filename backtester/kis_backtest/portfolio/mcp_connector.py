@@ -26,12 +26,13 @@ Usage (Claude Code 스킬 내에서):
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from typing import Any, Dict, List, Optional, Tuple
 
 
-# VPS 정보
-MCP_VPS_HOST = "62.171.141.206"
+# VPS 정보 (환경변수 우선, 미설정 시 기본값)
+MCP_VPS_HOST = os.environ.get("MCP_VPS_HOST", "62.171.141.206")
 MCP_HEALTH_URL = f"http://{MCP_VPS_HOST}/health"
 MCP_ENDPOINT = f"http://{MCP_VPS_HOST}/mcp"
 

@@ -221,7 +221,7 @@ class LeanClient:
         )
         
         # 4. 전략 코드 저장
-        project.main_py.write_text(strategy_code)
+        project.main_py.write_text(strategy_code, encoding="utf-8")
         
         # 5. 데이터 변환 및 저장
         logger.info(f"[Backtest] 데이터 변환 중")
@@ -298,7 +298,7 @@ class LeanClient:
         )
         
         # 3. 알고리즘 코드 저장
-        project.main_py.write_text(algorithm_code)
+        project.main_py.write_text(algorithm_code, encoding="utf-8")
         
         # 4. 데이터 변환
         DataConverter.export(data, str(project.data_dir), market_type)
@@ -734,7 +734,7 @@ class LeanClient:
         )
 
         # 5. 전략 코드 저장
-        project.main_py.write_text(strategy_code)
+        project.main_py.write_text(strategy_code, encoding="utf-8")
 
         # 6. 데이터 변환 및 저장
         DataConverter.export(data_dict, str(project.data_dir), market_type)
@@ -762,18 +762,18 @@ class LeanClient:
         start_date: str,
         end_date: str,
         weights: Optional[Dict[str, float]] = None,
-        risk_free_rate: float = 0.03,
+        risk_free_rate: Optional[float] = None,
     ):
         """포트폴리오 분석
-        
+
         다중 자산 포트폴리오의 상관관계, 분산효과, 리스크 기여도 분석.
-        
+
         Args:
             symbols: 종목코드 리스트
             start_date: 시작일 (YYYY-MM-DD)
             end_date: 종료일 (YYYY-MM-DD)
             weights: 비중 딕셔너리 (None이면 동일 비중)
-            risk_free_rate: 무위험 이자율 (연율)
+            risk_free_rate: 무위험 이자율 (연율). None이면 0.035 fallback
         
         Returns:
             PortfolioMetrics: 분석 결과

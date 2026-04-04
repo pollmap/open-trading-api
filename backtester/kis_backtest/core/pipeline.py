@@ -14,9 +14,15 @@ Flow:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Sequence
+from typing import TYPE_CHECKING, Dict, List, Optional, Sequence
+
+if TYPE_CHECKING:
+    from kis_backtest.portfolio.mcp_data_provider import MCPDataProvider
+
+logger = logging.getLogger(__name__)
 
 from kis_backtest.strategies.risk.cost_model import (
     KoreaTransactionCostModel,
@@ -68,7 +74,7 @@ class PipelineConfig:
     min_sharpe: float = 0.5
     max_drawdown: float = -0.20
     slippage_bps: float = 5.0
-    risk_free_rate: float = 0.035
+    risk_free_rate: Optional[float] = None  # None → MCP에서 런타임 조회, fallback 0.035
 
 
 @dataclass
@@ -109,8 +115,25 @@ class QuantPipeline:
             print("리스크 게이트 FAIL:", result.risk_details)
     """
 
-    def __init__(self, config: Optional[PipelineConfig] = None):
+    def __init__(
+        self,
+        config: Optional[PipelineConfig] = None,
+        mcp_provider: Optional["MCPDataProvider"] = None,
+    ):
         self.config = config or PipelineConfig()
+        self.mcp = mcp_provider
+
+        # risk_free_rate 해결: MCP → config → fallback
+        if self.config.risk_free_rate is None:
+            if self.mcp:
+                try:
+                    self.config.risk_free_rate = self.mcp.get_risk_free_rate_sync()
+                    logger.info("MCP 기준금리 적용: %.4f", self.config.risk_free_rate)
+                except Exception as e:
+                    logger.warning("MCP 기준금리 조회 실패, fallback 사용: %s", e)
+                    self.config.risk_free_rate = 0.035
+            else:
+                self.config.risk_free_rate = 0.035
 
         self.cost_model = KoreaTransactionCostModel(
             slippage_bps=self.config.slippage_bps,
@@ -310,9 +333,11 @@ class QuantPipeline:
         )
 
         # 6. 팩터→BL 자동 뷰 생성 (참고용 — 다음 리밸런싱에서 MCP BL 호출 시 사용)
+        #    base_return = risk_free_rate + 한국 주식 ERP(약 5%)
+        bl_base_return = self.config.risk_free_rate + 0.05
         auto_views = factor_scores_to_bl_views(
             factor_scores,
-            base_return=0.08,
+            base_return=bl_base_return,
             spread=0.10,
             long_only=True,
         )
@@ -341,8 +366,24 @@ class QuantPipeline:
         factor_contributions: Optional[Dict[str, float]] = None,
         period_start: str = "",
         period_end: str = "",
+        cufa_report: Optional[Dict] = None,
     ) -> WeeklyReport:
-        """복기 실행 (파이프라인에서 직접 호출)"""
+        """복기 실행 (파이프라인에서 직접 호출)
+
+        Args:
+            cufa_report: CUFA 보고서 dict → Kill Conditions 자동 추출 (Phase 3 CUFABridge)
+        """
+        # CUFA 보고서가 있고 kill_conditions가 미지정이면 자동 추출
+        if cufa_report and not kill_conditions:
+            try:
+                from kis_backtest.portfolio.cufa_bridge import CUFABridge
+                kill_conditions = CUFABridge.parse_kill_conditions(cufa_report)
+                if self.mcp:
+                    kill_conditions = CUFABridge.evaluate_kill_conditions(
+                        kill_conditions, self.mcp
+                    )
+            except ImportError:
+                pass  # cufa_bridge 미설치 시 무시
         freq_to_rt = {"weekly": 50, "biweekly": 24, "monthly": 12, "quarterly": 4}
         n_rt = freq_to_rt.get(self.config.rebalance_frequency, 12)
 

@@ -40,6 +40,9 @@ build-backend = "hatchling.build"
 testpaths = ["tests"]
 python_files = "test_*.py"
 asyncio_mode = "auto"
+markers = [
+    "integration: 실제 MCP 서버 필요 (pytest -m integration)",
+]
 
 [tool.coverage.run]
 source = ["kis_backtest"]

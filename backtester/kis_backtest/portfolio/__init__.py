@@ -20,6 +20,8 @@ from .analyzer import PortfolioAnalyzer, PortfolioMetrics
 from .rebalance import RebalanceSimulator, RebalanceResult
 from .visualizer import PortfolioVisualizer
 from .mcp_bridge import MCPBridge, PortfolioOrder, StockAllocation, OrderAction
+from .mcp_data_provider import MCPDataProvider
+from .cufa_bridge import CUFABridge
 from .review_engine import ReviewEngine, WeeklyReport, TradeRecord, KillCondition
 
 __all__ = [
@@ -29,6 +31,8 @@ __all__ = [
     "RebalanceResult",
     "PortfolioVisualizer",
     "MCPBridge",
+    "MCPDataProvider",
+    "CUFABridge",
     "PortfolioOrder",
     "StockAllocation",
     "OrderAction",
