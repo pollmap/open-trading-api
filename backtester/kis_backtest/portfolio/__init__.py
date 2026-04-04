@@ -19,6 +19,8 @@ Example:
 from .analyzer import PortfolioAnalyzer, PortfolioMetrics
 from .rebalance import RebalanceSimulator, RebalanceResult
 from .visualizer import PortfolioVisualizer
+from .mcp_bridge import MCPBridge, PortfolioOrder, StockAllocation, OrderAction
+from .review_engine import ReviewEngine, WeeklyReport, TradeRecord, KillCondition
 
 __all__ = [
     "PortfolioAnalyzer",
@@ -26,4 +28,12 @@ __all__ = [
     "RebalanceSimulator",
     "RebalanceResult",
     "PortfolioVisualizer",
+    "MCPBridge",
+    "PortfolioOrder",
+    "StockAllocation",
+    "OrderAction",
+    "ReviewEngine",
+    "WeeklyReport",
+    "TradeRecord",
+    "KillCondition",
 ]

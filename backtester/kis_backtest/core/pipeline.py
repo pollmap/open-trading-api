@@ -1,0 +1,263 @@
+"""퀀트 운용 통합 파이프라인
+
+모든 부품(리스크 모듈, 브릿지, 복기 엔진)을 하나의 E2E 파이프라인으로 엮는다.
+
+Flow:
+    종목+팩터점수+비중 (MCP 결과 또는 수동)
+      → 변동성 타겟팅
+      → 거래비용 계산
+      → 리스크 게이트 체크
+      → PortfolioOrder 생성
+      → (선택) 백테스트 실행
+      → (선택) 복기 리포트 생성
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Dict, List, Optional, Sequence
+
+from kis_backtest.strategies.risk.cost_model import (
+    KoreaTransactionCostModel,
+    Market,
+)
+from kis_backtest.strategies.risk.drawdown_guard import (
+    DrawdownGuard,
+    check_concentration,
+    ConcentrationLimits,
+)
+from kis_backtest.strategies.risk.vol_target import (
+    VolatilityTargeter,
+    turbulence_index,
+)
+from kis_backtest.portfolio.mcp_bridge import (
+    MCPBridge,
+    PortfolioOrder,
+    OrderAction,
+)
+from kis_backtest.portfolio.review_engine import (
+    ReviewEngine,
+    WeeklyReport,
+    TradeRecord,
+    KillCondition,
+)
+
+
+@dataclass
+class PipelineConfig:
+    """파이프라인 설정"""
+    total_capital: float = 5_000_000
+    target_vol: float = 0.10
+    max_leverage: float = 1.5
+    kelly_fraction: float = 0.5
+    rebalance_frequency: str = "monthly"
+    dd_warning: float = -0.05
+    dd_reduce: float = -0.075
+    dd_halt: float = -0.10
+    max_single_stock: float = 0.15
+    max_single_sector: float = 0.35
+    min_sharpe: float = 0.5
+    max_drawdown: float = -0.20
+    slippage_bps: float = 5.0
+    risk_free_rate: float = 0.035
+
+
+@dataclass
+class PipelineResult:
+    """파이프라인 실행 결과"""
+    order: Optional[PortfolioOrder]
+    risk_passed: bool
+    risk_details: List[str]
+    vol_adjustments: Dict[str, float]  # ticker → scale_factor
+    turb_index: float
+    dd_state: Optional[str]
+    estimated_annual_cost: float
+    kelly_allocation: float
+
+
+class QuantPipeline:
+    """퀀트 운용 통합 파이프라인
+
+    Usage:
+        pipeline = QuantPipeline()
+
+        result = pipeline.run(
+            factor_scores={
+                "005930": {"name": "삼성전자", "score": 0.82, "sector": "IT"},
+                "000660": {"name": "SK하이닉스", "score": 0.75, "sector": "IT"},
+            },
+            optimal_weights={"005930": 0.15, "000660": 0.12},
+            returns_dict={
+                "005930": [0.01, -0.005, 0.008, ...],
+                "000660": [0.015, -0.01, 0.003, ...],
+            },
+        )
+
+        if result.risk_passed:
+            print(result.order.summary())
+        else:
+            print("리스크 게이트 FAIL:", result.risk_details)
+    """
+
+    def __init__(self, config: Optional[PipelineConfig] = None):
+        self.config = config or PipelineConfig()
+
+        self.cost_model = KoreaTransactionCostModel(
+            slippage_bps=self.config.slippage_bps,
+        )
+        self.vol_targeter = VolatilityTargeter(
+            target_vol=self.config.target_vol,
+            max_leverage=self.config.max_leverage,
+        )
+        self.dd_guard = DrawdownGuard(
+            warning_pct=self.config.dd_warning,
+            reduce_pct=self.config.dd_reduce,
+            halt_pct=self.config.dd_halt,
+        )
+        self.bridge = MCPBridge(
+            total_capital=self.config.total_capital,
+            cost_model=self.cost_model,
+            vol_targeter=self.vol_targeter,
+            concentration_limits=ConcentrationLimits(
+                max_single_stock=self.config.max_single_stock,
+                max_single_sector=self.config.max_single_sector,
+            ),
+            kelly_fraction=self.config.kelly_fraction,
+            min_sharpe=self.config.min_sharpe,
+            max_drawdown=self.config.max_drawdown,
+        )
+        self.review_engine = ReviewEngine(
+            initial_capital=self.config.total_capital,
+            risk_free_rate=self.config.risk_free_rate,
+        )
+
+    def run(
+        self,
+        factor_scores: Dict[str, Dict],
+        optimal_weights: Dict[str, float],
+        returns_dict: Optional[Dict[str, Sequence[float]]] = None,
+        current_weights: Optional[Dict[str, float]] = None,
+        equity_curve: Optional[Sequence[float]] = None,
+        backtest_sharpe: Optional[float] = None,
+        backtest_max_dd: Optional[float] = None,
+        strategy_name: str = "korean-multifactor",
+    ) -> PipelineResult:
+        """전체 파이프라인 실행
+
+        Args:
+            factor_scores: MCP factor_score 결과 {ticker: {name, score, sector}}
+            optimal_weights: MCP BL/HRP 결과 {ticker: weight}
+            returns_dict: 종목별 일간 수익률 (변동성 타겟팅용)
+            current_weights: 현재 보유 비중 (리밸런싱용)
+            equity_curve: 현재까지 자산 곡선 (DD 체크용)
+            backtest_sharpe: 백테스트 Sharpe (리스크 게이트)
+            backtest_max_dd: 백테스트 MaxDD (리스크 게이트)
+        """
+        returns_dict = returns_dict or {}
+        risk_details = []
+
+        # 1. 변동성 타겟팅 — 비중 조정
+        vol_adjustments = {}
+        adjusted_weights = {}
+
+        for ticker, weight in optimal_weights.items():
+            rets = returns_dict.get(ticker, [])
+            if rets:
+                result = self.vol_targeter.scale(weight, rets)
+                adjusted_weights[ticker] = result.vol_scaled_weight
+                vol_adjustments[ticker] = result.scale_factor
+            else:
+                adjusted_weights[ticker] = weight
+                vol_adjustments[ticker] = 1.0
+
+        # 비중 정규화 (합이 1 이하가 되도록)
+        total_w = sum(adjusted_weights.values())
+        if total_w > 1.0:
+            for ticker in adjusted_weights:
+                adjusted_weights[ticker] /= total_w
+
+        # 2. 터뷸런스 인덱스
+        turb = 0.0
+        if returns_dict:
+            tickers = list(returns_dict.keys())
+            if tickers and len(returns_dict[tickers[0]]) > 10:
+                current_rets = [returns_dict[t][-1] if returns_dict.get(t) else 0 for t in tickers]
+                hist_rets = []
+                min_len = min(len(returns_dict[t]) for t in tickers if returns_dict.get(t))
+                for i in range(max(0, min_len - 50), min_len - 1):
+                    hist_rets.append([returns_dict[t][i] if i < len(returns_dict.get(t, [])) else 0 for t in tickers])
+                if hist_rets:
+                    turb = turbulence_index(current_rets, hist_rets)
+
+        if turb > 5.0:
+            risk_details.append(f"TURB WARNING: 터뷸런스 {turb:.1f}x (>5x, 위기 수준)")
+
+        # 3. 드로다운 체크
+        dd_state = None
+        if equity_curve and len(equity_curve) > 1:
+            peak = max(equity_curve)
+            state = self.dd_guard.check(equity_curve[-1], peak)
+            dd_state = state.action
+            if state.is_breached:
+                risk_details.append(f"DD BREACH: {state.action}")
+                # DD 발생 시 전 비중 축소
+                for ticker in adjusted_weights:
+                    adjusted_weights[ticker] *= state.reduction_factor
+
+        # 4. After-cost Kelly 체크
+        freq_to_rt = {"weekly": 50, "biweekly": 24, "monthly": 12, "quarterly": 4}
+        n_rt = freq_to_rt.get(self.config.rebalance_frequency, 12)
+        kelly_alloc = self.cost_model.kelly_adjusted(
+            mu=0.15, sigma=0.25, rf=self.config.risk_free_rate,
+            n_roundtrips=n_rt, fraction=self.config.kelly_fraction,
+        )
+
+        # 5. 브릿지 → PortfolioOrder
+        order = self.bridge.build_order(
+            strategy_name=strategy_name,
+            factor_scores=factor_scores,
+            optimal_weights=adjusted_weights,
+            rebalance_frequency=self.config.rebalance_frequency,
+            current_weights=current_weights,
+            backtest_sharpe=backtest_sharpe,
+            backtest_max_dd=backtest_max_dd,
+        )
+
+        # 종합 리스크 판정
+        all_details = risk_details + [d for d in order.risk_gate_details if d != "ALL PASS"]
+        risk_passed = order.risk_gate_passed and not any("BREACH" in d for d in risk_details)
+
+        return PipelineResult(
+            order=order,
+            risk_passed=risk_passed,
+            risk_details=all_details if all_details else ["ALL PASS"],
+            vol_adjustments=vol_adjustments,
+            turb_index=turb,
+            dd_state=dd_state,
+            estimated_annual_cost=self.cost_model.annual_cost(n_rt),
+            kelly_allocation=kelly_alloc,
+        )
+
+    def review(
+        self,
+        equity_curve: Sequence[float],
+        trades: Optional[List[TradeRecord]] = None,
+        kill_conditions: Optional[List[KillCondition]] = None,
+        factor_contributions: Optional[Dict[str, float]] = None,
+        period_start: str = "",
+        period_end: str = "",
+    ) -> WeeklyReport:
+        """복기 실행 (파이프라인에서 직접 호출)"""
+        freq_to_rt = {"weekly": 50, "biweekly": 24, "monthly": 12, "quarterly": 4}
+        n_rt = freq_to_rt.get(self.config.rebalance_frequency, 12)
+
+        return self.review_engine.weekly_review(
+            equity_curve=equity_curve,
+            trades=trades,
+            kill_conditions=kill_conditions,
+            model_cost_rate=self.cost_model.annual_cost(n_rt),
+            factor_contributions=factor_contributions,
+            period_start=period_start,
+            period_end=period_end,
+        )

@@ -35,7 +35,7 @@ class CodeGenConfig:
     """코드 생성 설정"""
     market: str = "krx"  # krx, us
     commission_rate: float = 0.00015  # 0.015%
-    tax_rate: float = 0.002  # 0.2% (KRX 매도세)
+    tax_rate: float = 0.002  # 매도 세금: KOSPI 0.20% (거래세 0.05% + 농특세 0.15%), KOSDAQ 0.20% (거래세만)
     slippage: float = 0.0  # 슬리피지 (기본 0%)
     initial_capital: float = 100_000_000  # 1억원
 
@@ -390,12 +390,13 @@ class LeanCodeGenerator:
                 candlestick_imports = f"\nfrom QuantConnect.Indicators.CandlestickPatterns import {classes_str}"
 
         slippage_info = f"\n슬리피지: {self.config.slippage * 100:.2f}%" if self.config.slippage > 0 else ""
-        return f'''"""자동 생성된 Lean 알고리즘
-전략: {self.schema.name}
+        return f'''# -*- coding: utf-8 -*-
+"""Auto-generated Lean Algorithm
+Strategy: {self.schema.name}
 ID: {self.schema.id}
-생성일: {datetime.now().isoformat()}
-수수료율: {self.config.commission_rate * 100:.4f}%
-거래세율: {self.config.tax_rate * 100:.2f}%{slippage_info}
+Created: {datetime.now().isoformat()}
+Commission: {self.config.commission_rate * 100:.4f}%
+Tax: {self.config.tax_rate * 100:.2f}%{slippage_info}
 """
 
 from AlgorithmImports import *
