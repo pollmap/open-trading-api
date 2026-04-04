@@ -42,6 +42,11 @@ from kis_backtest.portfolio.review_engine import (
     TradeRecord,
     KillCondition,
 )
+from kis_backtest.portfolio.factor_to_views import (
+    factor_scores_to_bl_views,
+    bl_views_to_mcp_format,
+    views_summary,
+)
 
 
 @dataclass
@@ -74,6 +79,7 @@ class PipelineResult:
     dd_state: Optional[str]
     estimated_annual_cost: float
     kelly_allocation: float
+    auto_bl_views: Optional[List] = None  # 팩터→BL 자동 뷰 (None이면 수동 비중 사용)
 
 
 class QuantPipeline:
@@ -290,6 +296,14 @@ class QuantPipeline:
             backtest_max_dd=backtest_max_dd,
         )
 
+        # 6. 팩터→BL 자동 뷰 생성 (참고용 — 다음 리밸런싱에서 MCP BL 호출 시 사용)
+        auto_views = factor_scores_to_bl_views(
+            factor_scores,
+            base_return=0.08,
+            spread=0.10,
+            long_only=True,
+        )
+
         # 종합 리스크 판정
         all_details = risk_details + [d for d in order.risk_gate_details if d != "ALL PASS"]
         risk_passed = order.risk_gate_passed and not any("BREACH" in d for d in risk_details)
@@ -303,6 +317,7 @@ class QuantPipeline:
             dd_state=dd_state,
             estimated_annual_cost=self.cost_model.annual_cost(n_rt),
             kelly_allocation=kelly_alloc,
+            auto_bl_views=auto_views,
         )
 
     def review(
