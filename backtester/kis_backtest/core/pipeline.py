@@ -31,6 +31,9 @@ from kis_backtest.strategies.risk.vol_target import (
     VolatilityTargeter,
     turbulence_index,
 )
+from kis_backtest.strategies.risk.correlation_monitor import (
+    CorrelationMonitor,
+)
 from kis_backtest.portfolio.mcp_bridge import (
     MCPBridge,
     PortfolioOrder,
@@ -132,6 +135,10 @@ class QuantPipeline:
             kelly_fraction=self.config.kelly_fraction,
             min_sharpe=self.config.min_sharpe,
             max_drawdown=self.config.max_drawdown,
+        )
+        self.corr_monitor = CorrelationMonitor(
+            threshold=self.config.max_single_sector,  # 0.35 → 상관 한도도 유사
+            lookback=60,
         )
         self.review_engine = ReviewEngine(
             initial_capital=self.config.total_capital,
@@ -241,6 +248,12 @@ class QuantPipeline:
 
         if turb > 5.0:
             risk_details.append(f"TURB WARNING: 터뷸런스 {turb:.1f}x (>5x, 위기 수준)")
+
+        # 2b. 상관관계 모니터
+        if returns_dict and len([t for t in returns_dict if len(returns_dict[t]) >= 30]) >= 2:
+            corr_alert = self.corr_monitor.check(returns_dict)
+            if corr_alert.is_elevated:
+                risk_details.append(f"CORR: {corr_alert.message}")
 
         # 3. 드로다운 체크
         dd_state = None

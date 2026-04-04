@@ -21,6 +21,7 @@ from .drawdown_guard import (
 )
 from .position_sizer import PositionSizer, SizingMethod
 from .vol_target import VolatilityTargeter, VolTargetResult, turbulence_index
+from .correlation_monitor import CorrelationMonitor, CorrelationAlert
 
 __all__ = [
     "KoreaFeeSchedule",
@@ -36,4 +37,6 @@ __all__ = [
     "VolatilityTargeter",
     "VolTargetResult",
     "turbulence_index",
+    "CorrelationMonitor",
+    "CorrelationAlert",
 ]
