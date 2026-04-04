@@ -205,11 +205,34 @@ class QuantPipeline:
                 for ticker in adjusted_weights:
                     adjusted_weights[ticker] *= state.reduction_factor
 
-        # 4. After-cost Kelly 체크
+        # 4. After-cost Kelly 체크 — 실제 데이터에서 mu/sigma 계산 (가정값 금지)
         freq_to_rt = {"weekly": 50, "biweekly": 24, "monthly": 12, "quarterly": 4}
         n_rt = freq_to_rt.get(self.config.rebalance_frequency, 12)
+
+        # 포트폴리오 가중평균 수익률/변동성 계산
+        port_mu = 0.0
+        port_var = 0.0
+        if returns_dict and adjusted_weights:
+            import math
+            all_rets = []
+            for ticker, weight in adjusted_weights.items():
+                rets = returns_dict.get(ticker, [])
+                if rets and weight > 0:
+                    mean_r = sum(rets) / len(rets) * 252  # 연율화
+                    var_r = sum((r - sum(rets)/len(rets))**2 for r in rets) / max(len(rets)-1, 1) * 252
+                    port_mu += weight * mean_r
+                    port_var += (weight ** 2) * var_r  # 단순 가정 (무상관)
+            port_sigma = math.sqrt(port_var) if port_var > 0 else 0.20  # 계산 불가 시 보수적 20%
+        else:
+            # 데이터 없으면 backtest_sharpe에서 역산, 그것도 없으면 보수적 가정
+            port_sigma = 0.20
+            if backtest_sharpe is not None and backtest_sharpe > 0:
+                port_mu = backtest_sharpe * port_sigma + self.config.risk_free_rate
+            else:
+                port_mu = 0.10  # 최소 보수적 가정 (데이터 부재 시)
+
         kelly_alloc = self.cost_model.kelly_adjusted(
-            mu=0.15, sigma=0.25, rf=self.config.risk_free_rate,
+            mu=port_mu, sigma=port_sigma, rf=self.config.risk_free_rate,
             n_roundtrips=n_rt, fraction=self.config.kelly_fraction,
         )
 

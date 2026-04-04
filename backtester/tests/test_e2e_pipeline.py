@@ -57,7 +57,7 @@ class TestE2EPipelineNormal:
         assert result.risk_passed
         assert result.order.n_stocks == 5
         assert result.estimated_annual_cost > 0
-        assert result.kelly_allocation > 0
+        assert result.kelly_allocation >= 0  # 실제 데이터 기반 Kelly는 0일 수 있음 (비용 > 기대수익)
 
     def test_pipeline_then_review(self):
         """파이프라인 실행 후 복기"""
