@@ -242,13 +242,13 @@ class TestDartFinancials:
         assert data["roe"] == pytest.approx(0.145)
 
     @pytest.mark.asyncio
-    async def test_get_dart_financials_cfs_default(self, provider):
-        """기본 report_type = CFS (연결재무제표)"""
+    async def test_get_dart_financials_uses_stock_code(self, provider):
+        """stock_code 파라미터로 호출"""
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
-            mock.return_value = {"success": True, "data": {"opm": 0.1}}
+            mock.return_value = {"success": True, "ratios": {"roe": 5.5}}
             await provider.get_dart_financials("005930")
         call_args = mock.call_args[0]
-        assert call_args[1]["report_type"] == "CFS"
+        assert call_args[1]["stock_code"] == "005930"
 
 
 # ============================================================

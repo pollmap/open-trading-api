@@ -1,0 +1,3616 @@
+{
+  "gateway_status": {
+    "required": [],
+    "params": {},
+    "description": "Gateway status."
+  },
+  "list_available_tools": {
+    "required": [],
+    "params": {},
+    "description": "List all tools."
+  },
+  "api_call_stats": {
+    "required": [],
+    "params": {},
+    "description": "API 호출 통계 — 오늘 호출 수, 인기 도구, 세션 총 호출."
+  },
+  "ecos_search_stat_list": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "한국은행 ECOS 통계 목록 검색\n\nArgs:\n    keyword: 검색 키워드 (예: \"금리\", \"GDP\", \"물가\")\n\nReturns:\n    검색된 통계 목록"
+  },
+  "ecos_get_stat_data": {
+    "required": [
+      "stat_code",
+      "item_code",
+      "start_date"
+    ],
+    "params": {
+      "stat_code": "string",
+      "item_code": "string",
+      "start_date": "string",
+      "end_date": "string",
+      "frequency": "string"
+    },
+    "description": "ECOS 통계 데이터 조회\n\nArgs:\n    stat_code: 통계표 코드 (예: \"722Y001\" 기준금리)\n    item_code: 통계항목 코드 (예: \"0101000\""
+  },
+  "ecos_get_base_rate": {
+    "required": [],
+    "params": {
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "한국은행 기준금리 조회\n\nArgs:\n    start_date: 시작일 (YYYYMMDD, 기본값: 1년 전)\n    end_date: 종료일 (기본값: 오늘)\n\nReturns:\n"
+  },
+  "ecos_get_m2": {
+    "required": [],
+    "params": {
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "M2 통화량 조회 (광의통화)\n\nArgs:\n    start_date: 시작월 (YYYYMM, 기본값: 5년 전)\n    end_date: 종료월 (기본값: 최신)\n\nReturns"
+  },
+  "ecos_get_gdp": {
+    "required": [],
+    "params": {
+      "start_year": "string",
+      "end_year": "string"
+    },
+    "description": "GDP (국내총생산) 조회\n\nArgs:\n    start_year: 시작연도 (YYYY, 기본값: 10년 전)\n    end_year: 종료연도 (기본값: 최신)\n\nReturns:"
+  },
+  "ecos_get_macro_snapshot": {
+    "required": [],
+    "params": {
+      "date": "string"
+    },
+    "description": "주요 거시경제 지표 스냅샷\n\nArgs:\n    date: 기준일 (YYYYMMDD, 기본값: 최신)\n\nReturns:\n    기준금리, M2, GDP, 환율 (4개 지표)"
+  },
+  "ecos_get_exchange_rate": {
+    "required": [],
+    "params": {
+      "currency": "string",
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "환율 조회\n\nArgs:\n    currency: 통화 코드 (USD, EUR, JPY, CNY 등)\n    start_date: 시작일 (YYYYMMDD, 기본값: 1년 전)\n  "
+  },
+  "ecos_get_bond_yield": {
+    "required": [],
+    "params": {
+      "maturity": "string",
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "국고채 수익률 조회 (Rf, WACC 계산용)\n\nArgs:\n    maturity: 만기 (3Y, 5Y, 10Y, 20Y)\n    start_date: 시작일 (YYYYMMDD)\n"
+  },
+  "dart_company_info": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string"
+    },
+    "description": "기업개황 조회 (OpenDART).\n\nArgs:\n    stock_code: 종목코드 (예: 005930 = 삼성전자)\n\nReturns:\n    회사명, 대표자, 업종, 설립일, "
+  },
+  "dart_financial_statements": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "year": "unknown",
+      "report_type": "string"
+    },
+    "description": "재무제표 조회 (OpenDART).\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n    year: 사업연도 (기본: 전년도)\n    report_type"
+  },
+  "dart_financial_ratios": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "year": "unknown"
+    },
+    "description": "주요 재무비율 계산 (OpenDART 재무제표 기반).\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n    year: 사업연도 (기본: 전년도)\n\nRet"
+  },
+  "dart_major_shareholders": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string"
+    },
+    "description": "대주주 현황 조회 (OpenDART).\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n\nReturns:\n    대주주 목록 (이름, 지분율, 변동 내역)"
+  },
+  "dart_search_company": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "기업 검색 (OpenDART).\n\nArgs:\n    keyword: 회사명 (예: 삼성, 카카오, LG)\n\nReturns:\n    매칭 기업 목록 (회사명, 종목코드, 법인코드)"
+  },
+  "dart_cash_flow": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "year": "unknown",
+      "report_type": "string"
+    },
+    "description": "현금흐름표 조회 (OpenDART). OCF, 투자CF, 재무CF, FCF 분석용.\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n    year: 사업연"
+  },
+  "dart_dividend": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "year": "unknown"
+    },
+    "description": "배당 현황 조회 (OpenDART). 배당금, 배당률, 배당수익률.\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n    year: 사업연도 (기본: 전년"
+  },
+  "val_calculate_wacc": {
+    "required": [
+      "market_cap",
+      "total_debt"
+    ],
+    "params": {
+      "market_cap": "number",
+      "total_debt": "number",
+      "beta": "number",
+      "cost_of_debt": "number",
+      "tax_rate": "number"
+    },
+    "description": "WACC (가중평균자본비용) 계산\n\nArgs:\n    market_cap: 시가총액 (원)\n    total_debt: 총부채 (원)\n    beta: 베타 (기본값: 1.0)\n "
+  },
+  "val_dcf_valuation": {
+    "required": [
+      "stock_code",
+      "company_name",
+      "revenue",
+      "ebit",
+      "ebitda",
+      "net_income",
+      "total_debt",
+      "cash",
+      "total_equity",
+      "shares_outstanding",
+      "market_cap",
+      "capex",
+      "depreciation"
+    ],
+    "params": {
+      "stock_code": "string",
+      "company_name": "string",
+      "revenue": "number",
+      "ebit": "number",
+      "ebitda": "number",
+      "net_income": "number",
+      "total_debt": "number",
+      "cash": "number",
+      "total_equity": "number",
+      "shares_outstanding": "number",
+      "market_cap": "number",
+      "capex": "number",
+      "depreciation": "number",
+      "change_in_nwc": "number",
+      "beta": "number",
+      "cost_of_debt": "number",
+      "tax_rate": "number"
+    },
+    "description": "DCF 밸류에이션 수행\n\nArgs:\n    stock_code: 종목코드 (예: \"005930\")\n    company_name: 회사명\n    revenue: 매출액 (원)\n  "
+  },
+  "val_dcf_sample": {
+    "required": [],
+    "params": {
+      "stock_code": "string"
+    },
+    "description": "DART 재무제표 기반 자동 DCF 밸류에이션\n\nArgs:\n    stock_code: 종목코드 (예: \"005930\" 삼성전자)\n\nReturns:\n    DCF 밸류에이션 결과 "
+  },
+  "val_sensitivity_analysis": {
+    "required": [
+      "stock_code",
+      "company_name",
+      "ebit",
+      "ebitda",
+      "total_debt",
+      "cash",
+      "shares_outstanding",
+      "market_cap",
+      "capex",
+      "depreciation"
+    ],
+    "params": {
+      "stock_code": "string",
+      "company_name": "string",
+      "ebit": "number",
+      "ebitda": "number",
+      "total_debt": "number",
+      "cash": "number",
+      "shares_outstanding": "number",
+      "market_cap": "number",
+      "capex": "number",
+      "depreciation": "number",
+      "wacc_min": "number",
+      "wacc_max": "number",
+      "growth_min": "number",
+      "growth_max": "number"
+    },
+    "description": "DCF 민감도 분석 (WACC × 영구성장률)\n\nArgs:\n    stock_code: 종목코드\n    company_name: 회사명\n    ebit: 영업이익 (원)\n    e"
+  },
+  "val_peer_comparison": {
+    "required": [
+      "target_code",
+      "target_name",
+      "target_price",
+      "target_pe",
+      "target_pb",
+      "target_ev_ebitda",
+      "peer_data"
+    ],
+    "params": {
+      "target_code": "string",
+      "target_name": "string",
+      "target_price": "number",
+      "target_pe": "number",
+      "target_pb": "number",
+      "target_ev_ebitda": "number",
+      "peer_data": "array"
+    },
+    "description": "피어 그룹 비교 분석\n\nArgs:\n    target_code: 대상 종목코드\n    target_name: 대상 회사명\n    target_price: 현재 주가\n    targ"
+  },
+  "val_peer_comparison_sample": {
+    "required": [],
+    "params": {},
+    "description": "피어 비교 분석 예시 — val_peer_comparison 도구 사용법 안내\n\nReturns:\n    val_peer_comparison 사용 가이드"
+  },
+  "val_cross_market_comparison": {
+    "required": [
+      "kr_code",
+      "kr_name",
+      "kr_pe",
+      "kr_pb",
+      "kr_ev_ebitda",
+      "us_code",
+      "us_name",
+      "us_pe",
+      "us_pb",
+      "us_ev_ebitda"
+    ],
+    "params": {
+      "kr_code": "string",
+      "kr_name": "string",
+      "kr_pe": "number",
+      "kr_pb": "number",
+      "kr_ev_ebitda": "number",
+      "us_code": "string",
+      "us_name": "string",
+      "us_pe": "number",
+      "us_pb": "number",
+      "us_ev_ebitda": "number",
+      "korea_discount": "number"
+    },
+    "description": "한국-미국 크로스마켓 비교\n\nArgs:\n    kr_code: 한국 종목코드\n    kr_name: 한국 회사명\n    kr_pe: 한국 P/E\n    kr_pb: 한국 P/B\n "
+  },
+  "val_normalize_gaap": {
+    "required": [
+      "financials"
+    ],
+    "params": {
+      "financials": "object",
+      "source_standard": "string",
+      "target_standard": "string"
+    },
+    "description": "회계기준 정규화 (K-IFRS ↔ US-GAAP)\n\nArgs:\n    financials: 재무데이터 딕셔너리\n    source_standard: 원본 회계기준 (\"K-IFRS\""
+  },
+  "val_get_market_assumptions": {
+    "required": [],
+    "params": {},
+    "description": "현재 사용 중인 시장 가정값 조회\n\nReturns:\n    무위험수익률, ERP, 베타, 세율 등 기본 가정값 및 데이터 소스"
+  },
+  "val_refresh_market_data": {
+    "required": [],
+    "params": {},
+    "description": "시장 데이터 새로고침 (ECOS에서 최신 기준금리 가져오기)\n\nReturns:\n    업데이트된 시장 데이터"
+  },
+  "viz_line_chart": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "x_label": "string",
+      "y_label": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "라인 차트 생성 (시계열 데이터)\n\nArgs:\n    data: 데이터 리스트 [{\"date\": \"2024-01-01\", \"value\": 100, \"city\": \"Seoul\"}, "
+  },
+  "viz_bar_chart": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "title": "string",
+      "horizontal": "boolean",
+      "color_col": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "바 차트 생성 (비교 데이터)\n\nArgs:\n    data: 데이터 리스트 [{\"category\": \"A\", \"value\": 100}, ...]\n    x_col: X축 컬럼명\n "
+  },
+  "viz_candlestick": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "date_col": "string",
+      "open_col": "string",
+      "high_col": "string",
+      "low_col": "string",
+      "close_col": "string",
+      "volume_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "캔들스틱 차트 생성 (주가 데이터)\n\nArgs:\n    data: OHLC 데이터 리스트\n    date_col: 날짜 컬럼명\n    open_col: 시가 컬럼명\n    high"
+  },
+  "viz_heatmap": {
+    "required": [
+      "data",
+      "x_labels",
+      "y_labels"
+    ],
+    "params": {
+      "data": "array",
+      "x_labels": "array",
+      "y_labels": "array",
+      "title": "string",
+      "color_scale": "string",
+      "show_values": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "히트맵 생성 (상관관계, 민감도 분석)\n\nArgs:\n    data: 2D 숫자 배열 [[1,2,3], [4,5,6], ...]\n    x_labels: X축 레이블 리스트\n   "
+  },
+  "viz_scatter": {
+    "required": [
+      "data",
+      "x_col",
+      "y_col"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "color_col": "string",
+      "size_col": "string",
+      "title": "string",
+      "x_label": "string",
+      "y_label": "string",
+      "add_trendline": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "산점도 생성 (상관관계 분석)\n\nArgs:\n    data: 데이터 리스트\n    x_col: X축 컬럼명\n    y_col: Y축 컬럼명\n    color_col: 색상 구분 컬"
+  },
+  "viz_waterfall": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "category_col": "string",
+      "value_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "워터폴 차트 생성 (밸류 브릿지)\n\nArgs:\n    data: 데이터 리스트 [{\"category\": \"시작\", \"value\": 100}, {\"category\": \"+증가\", \""
+  },
+  "viz_dual_axis": {
+    "required": [
+      "data",
+      "x_col",
+      "y1_col",
+      "y2_col"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y1_col": "string",
+      "y2_col": "string",
+      "title": "string",
+      "y1_label": "string",
+      "y2_label": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "이중축 차트 생성 (다른 스케일 비교)\n\nArgs:\n    data: 데이터 리스트\n    x_col: X축 컬럼명\n    y1_col: 왼쪽 Y축 컬럼명\n    y2_col: 오"
+  },
+  "viz_pie_chart": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "names_col": "string",
+      "values_col": "string",
+      "title": "string",
+      "hole": "number",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "파이/도넛 차트 생성\n\nArgs:\n    data: 데이터 리스트 [{\"category\": \"A\", \"value\": 30}, ...]\n    names_col: 이름 컬럼명\n   "
+  },
+  "viz_correlation_matrix": {
+    "required": [
+      "data",
+      "columns"
+    ],
+    "params": {
+      "data": "array",
+      "columns": "array",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "상관관계 매트릭스 히트맵 생성\n\nArgs:\n    data: 데이터 리스트\n    columns: 상관관계 계산할 컬럼 리스트\n    title: 차트 제목\n    save_htm"
+  },
+  "viz_sensitivity_heatmap": {
+    "required": [
+      "matrix"
+    ],
+    "params": {
+      "matrix": "object",
+      "title": "string",
+      "x_label": "string",
+      "y_label": "string",
+      "current_value": "number",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "DCF 민감도 분석 히트맵 (val_sensitivity_analysis 결과용)\n\nArgs:\n    matrix: 민감도 매트릭스 {\"7.0%\": {\"1.0%\": 75000, ."
+  },
+  "viz_area_chart": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "stacked": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "영역 차트 생성 (누적 트렌드, 포트폴리오 구성 변화)\n\nArgs:\n    data: 데이터 리스트 [{\"date\": \"2024-01\", \"value\": 100, \"sector\":"
+  },
+  "viz_stacked_bar": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "stack_col": "string",
+      "title": "string",
+      "horizontal": "boolean",
+      "normalized": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "누적 막대 차트 생성 (구성비 분석, 부문별 비교)\n\nArgs:\n    data: 데이터 리스트 [{\"category\": \"2024Q1\", \"value\": 100, \"group\":"
+  },
+  "viz_histogram": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "value_col": "string",
+      "bins": "integer",
+      "group_col": "string",
+      "title": "string",
+      "x_label": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "히스토그램 생성 (수익률 분포, 주가 분포 분석)\n\nArgs:\n    data: 데이터 리스트 [{\"value\": 0.05}, {\"value\": -0.02}, ...]\n    va"
+  },
+  "viz_box_plot": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "value_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "show_points": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "박스플롯 생성 (분포 비교, 이상치 탐지)\n\nArgs:\n    data: 데이터 리스트 [{\"value\": 100, \"category\": \"IT\"}, ...]\n    value_c"
+  },
+  "viz_violin": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "value_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "show_box": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "바이올린 플롯 생성 (분포 형태 비교, 밀도+상자수염 결합)\n\nArgs:\n    data: 데이터 리스트 [{\"value\": 100, \"category\": \"IT\"}, ...]\n "
+  },
+  "viz_density": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "value_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "밀도 플롯 생성 (확률밀도 분포, 수익률 분포 비교)\n\nArgs:\n    data: [{\"value\": 0.05, \"group\": \"KOSPI\"}, ...]\n    value_co"
+  },
+  "viz_treemap": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "path_cols": "array",
+      "value_col": "string",
+      "color_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "트리맵 생성 (계층적 비율 시각화 — 시가총액, 포트폴리오, 섹터 비중)\n\nArgs:\n    data: 데이터 리스트 [{\"sector\": \"IT\", \"stock\": \"삼성전자\","
+  },
+  "viz_sunburst": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "path_cols": "array",
+      "value_col": "string",
+      "color_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "선버스트 차트 생성 (동심원 계층 구조 — 섹터→산업→종목)\n\nArgs:\n    data: 데이터 리스트 [{\"sector\": \"IT\", \"industry\": \"반도체\", \"sto"
+  },
+  "viz_funnel": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "stage_col": "string",
+      "value_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "퍼널 차트 생성 (단계별 전환율, 딜 파이프라인)\n\nArgs:\n    data: 데이터 리스트 [{\"stage\": \"리드\", \"value\": 1000}, {\"stage\": \"상담\""
+  },
+  "viz_gauge": {
+    "required": [
+      "value"
+    ],
+    "params": {
+      "value": "number",
+      "min_val": "number",
+      "max_val": "number",
+      "title": "string",
+      "thresholds": "array",
+      "suffix": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "게이지 차트 생성 (KPI 대시보드, 공포탐욕지수)\n\nArgs:\n    value: 현재 값\n    min_val: 최소값\n    max_val: 최대값\n    title: 차트 "
+  },
+  "viz_bullet": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "label_col": "string",
+      "actual_col": "string",
+      "target_col": "string",
+      "title": "string",
+      "ranges_cols": "array",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "불릿 차트 생성 (실적 vs 목표, KPI 추적)\n\nArgs:\n    data: [{\"label\": \"매출\", \"actual\": 85, \"target\": 100, \"poor\": 5"
+  },
+  "viz_sankey": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "source_col": "string",
+      "target_col": "string",
+      "value_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "산키 다이어그램 생성 (자금 흐름, 무역 흐름, 포트폴리오 리밸런싱)\n\nArgs:\n    data: 흐름 데이터 [{\"source\": \"수출\", \"target\": \"미국\", \"va"
+  },
+  "viz_radar": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "categories": "array",
+      "value_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "fill": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "레이더/스파이더 차트 생성 (다변량 비교 — PER/PBR/ROE 등 팩터 비교)\n\nArgs:\n    data: 데이터 리스트 [{\"factor\": \"PER\", \"value\": 8"
+  },
+  "viz_bubble": {
+    "required": [
+      "data",
+      "x_col",
+      "y_col",
+      "size_col"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "size_col": "string",
+      "color_col": "string",
+      "label_col": "string",
+      "title": "string",
+      "x_label": "string",
+      "y_label": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "버블 차트 생성 (3변수 비교 — PER vs ROE vs 시가총액)\n\nArgs:\n    data: [{\"stock\": \"삼성\", \"per\": 12, \"roe\": 15, \"mark"
+  },
+  "viz_lollipop": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "category_col": "string",
+      "value_col": "string",
+      "title": "string",
+      "horizontal": "boolean",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "롤리팝 차트 생성 (깔끔한 바 차트 대안, 순위 비교)\n\nArgs:\n    data: [{\"category\": \"삼성전자\", \"value\": 85}, ...]\n    categor"
+  },
+  "viz_slope": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "label_col": "string",
+      "start_col": "string",
+      "end_col": "string",
+      "start_label": "string",
+      "end_label": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "슬로프 차트 생성 (전후 비교, 순위 변동)\n\nArgs:\n    data: [{\"label\": \"삼성전자\", \"start\": 70000, \"end\": 85000}, ...]\n   "
+  },
+  "viz_parallel": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "dimensions": "array",
+      "color_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "평행좌표 차트 생성 (다변량 스크리닝, 종목 필터링)\n\nArgs:\n    data: [{\"stock\": \"삼성\", \"PER\": 12, \"PBR\": 1.5, \"ROE\": 15, \"배"
+  },
+  "viz_combo": {
+    "required": [
+      "data",
+      "x_col"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "bar_cols": "array",
+      "line_cols": "array",
+      "title": "string",
+      "bar_label": "string",
+      "line_label": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "콤보 차트 생성 (바+라인 자유 조합)\n\nArgs:\n    data: [{\"date\": \"2024Q1\", \"매출\": 100, \"영업이익\": 20, \"영업이익률\": 20.0}, .."
+  },
+  "viz_gantt": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "task_col": "string",
+      "start_col": "string",
+      "end_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "간트 차트 생성 (프로젝트 타임라인, IPO 일정, 이벤트 스케줄)\n\nArgs:\n    data: [{\"task\": \"실사\", \"start\": \"2024-01-01\", \"end\":"
+  },
+  "viz_marimekko": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "x_col": "string",
+      "y_col": "string",
+      "group_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "마리메코 차트 생성 (가변폭 누적바 — 시장점유율×세그먼트)\n\nArgs:\n    data: [{\"category\": \"한국\", \"segment\": \"전자\", \"share\": 40,"
+  },
+  "viz_map_choropleth": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "location_col": "string",
+      "value_col": "string",
+      "title": "string",
+      "color_scale": "string",
+      "location_mode": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "국가/지역별 색상 지도 (GDP, 수출, 물가, 인구 등 비교)\n\nArgs:\n    data: [{\"country\": \"South Korea\", \"value\": 1.8}, {\"co"
+  },
+  "viz_map_scatter": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "lat_col": "string",
+      "lon_col": "string",
+      "size_col": "string",
+      "color_col": "string",
+      "label_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "좌표 기반 포인트 지도 (항만, 공장, 임상시험 위치, 부동산 등)\n\nArgs:\n    data: [{\"name\": \"부산항\", \"lat\": 35.18, \"lon\": 129.08,"
+  },
+  "viz_map_flow": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "from_lat": "string",
+      "from_lon": "string",
+      "to_lat": "string",
+      "to_lon": "string",
+      "value_col": "string",
+      "label_col": "string",
+      "title": "string",
+      "save_html": "boolean",
+      "save_png": "boolean"
+    },
+    "description": "흐름 지도 (무역 경로, 운임 흐름, 공급망, 이주 등)\n\nArgs:\n    data: [{\"from_lat\": 37.57, \"from_lon\": 126.98, \"to_lat\": "
+  },
+  "kosis_search_tables": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "KOSIS 통계표 검색\n\nArgs:\n    keyword: 검색어 (예: \"인구\", \"실업\", \"주택\")\n\nReturns:\n    매칭되는 통계표 목록"
+  },
+  "kosis_get_population": {
+    "required": [],
+    "params": {
+      "region_code": "string",
+      "start_year": "string",
+      "end_year": "string"
+    },
+    "description": "인구통계 조회\n\nArgs:\n    region_code: 지역코드 (00=전국, 11=서울, 26=부산, 28=인천, 41=경기)\n    start_year: 시작연도 (기본: 5"
+  },
+  "kosis_get_unemployment": {
+    "required": [],
+    "params": {
+      "start_month": "string",
+      "end_month": "string"
+    },
+    "description": "실업률 조회\n\nArgs:\n    start_month: 시작월 (YYYYMM, 기본: 2년 전)\n    end_month: 종료월 (기본: 현재)\n\nReturns:\n    실업률 "
+  },
+  "kosis_get_housing_price": {
+    "required": [],
+    "params": {
+      "region_code": "string",
+      "start_month": "string",
+      "end_month": "string"
+    },
+    "description": "주택가격지수 조회\n\nArgs:\n    region_code: 지역코드 (00=전국, 11=서울)\n    start_month: 시작월 (YYYYMM)\n    end_month: 종"
+  },
+  "kosis_get_table": {
+    "required": [
+      "org_id",
+      "tbl_id",
+      "start_period",
+      "end_period"
+    ],
+    "params": {
+      "org_id": "string",
+      "tbl_id": "string",
+      "start_period": "string",
+      "end_period": "string",
+      "prd_se": "string",
+      "itm_id": "string",
+      "obj_l1": "string",
+      "obj_l2": "string"
+    },
+    "description": "KOSIS 통계표 직접 조회\n\nArgs:\n    org_id: 기관코드 (예: \"101\" 통계청, \"301\" 한국은행, \"408\" 한국부동산원)\n    tbl_id: 통계표ID ("
+  },
+  "rone_get_apt_price_index": {
+    "required": [],
+    "params": {
+      "region": "string",
+      "start_month": "string",
+      "end_month": "string"
+    },
+    "description": "아파트매매가격지수 조회\n\nArgs:\n    region: 지역명 (서울, 전국, 강남구, 수원 등)\n    start_month: 시작월 (YYYY-MM, 기본: 1년 전)\n   "
+  },
+  "rone_get_jeonse_index": {
+    "required": [],
+    "params": {
+      "region": "string",
+      "start_month": "string",
+      "end_month": "string"
+    },
+    "description": "전세가격지수 조회\n\nArgs:\n    region: 지역명\n    start_month: 시작월 (YYYY-MM)\n    end_month: 종료월\n\nReturns:\n    전세가"
+  },
+  "rone_get_pir": {
+    "required": [],
+    "params": {
+      "region": "string"
+    },
+    "description": "PIR (소득대비주택가격) 조회\n\nPIR = 중위주택가격 / 중위가구소득\n\nArgs:\n    region: 지역명\n\nReturns:\n    PIR 데이터"
+  },
+  "rone_get_price_comparison": {
+    "required": [],
+    "params": {
+      "regions": "array"
+    },
+    "description": "지역별 아파트가격 비교\n\nArgs:\n    regions: 비교할 지역 리스트 (기본: 서울, 전국, 경기)\n\nReturns:\n    지역별 가격지수 비교"
+  },
+  "rone_get_market_summary": {
+    "required": [],
+    "params": {},
+    "description": "부동산 시장 요약\n\nReturns:\n    전국/서울 가격지수, PIR, 최근 동향"
+  },
+  "rone_list_regions": {
+    "required": [],
+    "params": {},
+    "description": "사용 가능한 지역 목록\n\nReturns:\n    지역명과 코드 목록"
+  },
+  "stocks_quote": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "market": "string"
+    },
+    "description": "실시간 주가 조회 (한국: KIS/pykrx, 미국: Yahoo Finance).\n\nArgs:\n    stock_code: 종목코드 (한국: 005930, 미국: AAPL)\n   "
+  },
+  "stocks_search": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "종목 검색 (한국어 회사명 또는 코드).\n\nArgs:\n    keyword: 검색어 (예: 삼성전자, 카카오, 005930)\n\nReturns:\n    매칭 종목 목록"
+  },
+  "stocks_history": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "start_date": "string",
+      "end_date": "string",
+      "market": "string",
+      "interval": "string",
+      "limit": "integer"
+    },
+    "description": "과거 주가 데이터 (OHLCV).\n\nArgs:\n    stock_code: 종목코드\n    start_date: 시작일 (YYYYMMDD)\n    end_date: 종료일 (YYY"
+  },
+  "stocks_beta": {
+    "required": [
+      "stock_code"
+    ],
+    "params": {
+      "stock_code": "string",
+      "index_code": "string",
+      "period_days": "integer"
+    },
+    "description": "베타(β) 계산 — 종목의 시장 대비 민감도.\n\nArgs:\n    stock_code: 종목코드 (예: 005930)\n    index_code: 지수코드 (1001=KOSPI, "
+  },
+  "stocks_market_overview": {
+    "required": [],
+    "params": {},
+    "description": "한국 + 글로벌 시장 개요 — KOSPI, KOSDAQ, 원/달러.\n\nReturns:\n    주요 지수 현재값, 등락률"
+  },
+  "crypto_ticker": {
+    "required": [],
+    "params": {
+      "exchange": "string",
+      "symbol": "string"
+    },
+    "description": "크립토 실시간 시세 조회.\n\nArgs:\n    exchange: 거래소 (upbit, bithumb, binance, korbit, coinone)\n    symbol: 거래쌍 ("
+  },
+  "crypto_orderbook": {
+    "required": [],
+    "params": {
+      "exchange": "string",
+      "symbol": "string",
+      "limit": "integer"
+    },
+    "description": "호가창 (매수/매도 호가).\n\nArgs:\n    exchange: 거래소\n    symbol: 거래쌍\n    limit: 호가 단계 수 (기본 10)"
+  },
+  "crypto_ohlcv": {
+    "required": [],
+    "params": {
+      "exchange": "string",
+      "symbol": "string",
+      "timeframe": "string",
+      "limit": "integer"
+    },
+    "description": "OHLCV 캔들 데이터.\n\nArgs:\n    exchange: 거래소\n    symbol: 거래쌍\n    timeframe: 봉 주기 (1m, 5m, 1h, 4h, 1d, 1w)\n"
+  },
+  "crypto_all_tickers": {
+    "required": [],
+    "params": {
+      "exchange": "string"
+    },
+    "description": "거래소 전체 시세 (거래량 상위 50개).\n\nArgs:\n    exchange: 거래소"
+  },
+  "crypto_kimchi_premium": {
+    "required": [],
+    "params": {
+      "coin": "string"
+    },
+    "description": "김치프리미엄 계산 — 업비트(KRW) vs 바이낸스(USDT) 가격차.\n\nArgs:\n    coin: 코인 (BTC, ETH, XRP 등)\n\nReturns:\n    premium_"
+  },
+  "crypto_exchange_compare": {
+    "required": [],
+    "params": {
+      "coin": "string"
+    },
+    "description": "한국 거래소 + 바이낸스 가격 비교.\n\nArgs:\n    coin: 코인 (BTC, ETH 등)"
+  },
+  "crypto_volume_ranking": {
+    "required": [],
+    "params": {
+      "exchange": "string",
+      "limit": "integer"
+    },
+    "description": "거래량 상위 종목 순위.\n\nArgs:\n    exchange: 거래소\n    limit: 상위 N개"
+  },
+  "crypto_spread": {
+    "required": [],
+    "params": {
+      "exchange": "string",
+      "symbol": "string"
+    },
+    "description": "매수/매도 스프레드 계산.\n\nArgs:\n    exchange: 거래소\n    symbol: 거래쌍"
+  },
+  "defi_protocols": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "DeFi 프로토콜 TVL 순위 (DefiLlama). Args: limit — 상위 N개."
+  },
+  "defi_protocol_detail": {
+    "required": [
+      "slug"
+    ],
+    "params": {
+      "slug": "string"
+    },
+    "description": "단일 프로토콜 상세 (체인별 TVL 포함). Args: slug — 프로토콜 ID (aave, uniswap 등)."
+  },
+  "defi_chains": {
+    "required": [],
+    "params": {},
+    "description": "체인별 TVL 합계 (Ethereum, BSC, Solana 등)."
+  },
+  "defi_feargreed": {
+    "required": [],
+    "params": {
+      "days": "integer"
+    },
+    "description": "크립토 공포탐욕지수 (0=극도공포, 100=극도탐욕). Args: days — 1이면 현재, 30이면 30일 히스토리."
+  },
+  "onchain_balance": {
+    "required": [
+      "address"
+    ],
+    "params": {
+      "address": "string"
+    },
+    "description": "ETH 잔고 조회. Args: address — 이더리움 주소 (0x...)."
+  },
+  "onchain_transactions": {
+    "required": [
+      "address"
+    ],
+    "params": {
+      "address": "string",
+      "limit": "integer"
+    },
+    "description": "최근 트랜잭션 조회. Args: address — 주소, limit — 건수."
+  },
+  "onchain_gas": {
+    "required": [],
+    "params": {},
+    "description": "현재 이더리움 가스비 (Safe/Propose/Fast gwei)."
+  },
+  "news_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "count": "integer",
+      "sort": "string",
+      "language": "string"
+    },
+    "description": "뉴스 검색. 한국어=네이버, 영어=GDELT 자동 전환.\n\nArgs:\n    query: 검색어 (예: 삼성전자, VLGC freight rate)\n    count: 결과 수 ("
+  },
+  "news_trend": {
+    "required": [
+      "keywords"
+    ],
+    "params": {
+      "keywords": "string",
+      "days": "integer"
+    },
+    "description": "네이버 검색 트렌드 (DataLab). 키워드별 검색량 추이 비교.\n\nArgs:\n    keywords: 쉼표로 구분된 키워드 (예: \"비트코인,이더리움,리플\")\n    days:"
+  },
+  "news_market_sentiment": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "키워드 관련 최신 뉴스 제목에서 감성 요약.\n\nArgs:\n    keyword: 종목명 또는 키워드 (예: SK하이닉스)\n\nReturns:\n    최신 뉴스 10개 제목 + 긍정/"
+  },
+  "news_keyword_volume": {
+    "required": [
+      "keywords"
+    ],
+    "params": {
+      "keywords": "string",
+      "days": "integer"
+    },
+    "description": "키워드 검색량 비교 (최근 N일).\n\nArgs:\n    keywords: 쉼표 구분 (최대 5개)\n    days: 기간 (기본 7일)"
+  },
+  "prediction_markets": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "Polymarket 활성 예측시장 목록 (거래량 순).\n\nArgs:\n    limit: 상위 N개 (기본 20)\n\nReturns:\n    질문, 확률, 거래량, 유동성"
+  },
+  "prediction_market_detail": {
+    "required": [
+      "condition_id"
+    ],
+    "params": {
+      "condition_id": "string"
+    },
+    "description": "단일 예측시장 상세 정보.\n\nArgs:\n    condition_id: 마켓 condition ID (markets 목록에서 확인)\n\nReturns:\n    질문, 설명, 확률, "
+  },
+  "prediction_events": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "예측시장 이벤트 목록 (관련 마켓 그룹).\n\nArgs:\n    limit: 상위 N개\n\nReturns:\n    이벤트 제목, 거래량, 포함 마켓 수"
+  },
+  "macro_oecd": {
+    "required": [],
+    "params": {
+      "dataset": "string",
+      "country": "string",
+      "subject": "string",
+      "recent": "integer"
+    },
+    "description": "OECD 지표 조회. dataset: MEI(경제지표), QNA(GDP), KEI(핵심지표). country: KOR, USA, JPN 등."
+  },
+  "macro_imf": {
+    "required": [],
+    "params": {
+      "database": "string",
+      "country": "string",
+      "indicator": "string",
+      "recent": "integer"
+    },
+    "description": "IMF 지표 조회. database: IFS(국제금융통계), WEO(세계경제전망), DOT(무역방향)."
+  },
+  "macro_bis": {
+    "required": [],
+    "params": {
+      "dataset": "string",
+      "country": "string",
+      "recent": "integer"
+    },
+    "description": "BIS 지표 조회. dataset: WS_SPP(부동산가격), WS_CREDIT_GAP(신용/GDP), WS_EER(실효환율)."
+  },
+  "macro_worldbank": {
+    "required": [],
+    "params": {
+      "indicator": "string",
+      "country": "string",
+      "recent": "integer"
+    },
+    "description": "World Bank 지표. indicator: NY.GDP.MKTP.CD(GDP), FP.CPI.TOTL.ZG(물가), SL.UEM.TOTL.ZS(실업률)."
+  },
+  "macro_datasets": {
+    "required": [],
+    "params": {
+      "source": "string"
+    },
+    "description": "사용 가능한 데이터셋 목록. source: OECD, IMF, BIS."
+  },
+  "macro_korea_snapshot": {
+    "required": [],
+    "params": {},
+    "description": "한국 경제 국제비교 스냅샷 — GDP, 물가, 실업률을 World Bank에서 조회."
+  },
+  "global_news_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "max_records": "integer",
+      "lang": "string",
+      "timespan": "string"
+    },
+    "description": "GDELT 글로벌 뉴스 검색 (100+언어, 15분 업데이트). lang: korean, english 등. timespan: 1d,7d,30d."
+  },
+  "global_news_timeline": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "timespan": "string"
+    },
+    "description": "GDELT 뉴스량 타임라인 — 키워드 관련 기사 수 추이."
+  },
+  "global_news_korea": {
+    "required": [],
+    "params": {
+      "query": "string",
+      "max_records": "integer"
+    },
+    "description": "한국 관련 글로벌 뉴스 (영어권 매체에서 한국을 어떻게 보도하는지)."
+  },
+  "academic_arxiv": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "arXiv 논문 검색. AI, 금융공학, 물리학 등 프리프린트."
+  },
+  "academic_semantic_scholar": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "Semantic Scholar 검색 (200M+ 논문). 인용 수 포함."
+  },
+  "academic_openalex": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "OpenAlex 검색 (250M+ 작품, CC0). DOI + OA 여부 포함."
+  },
+  "academic_multi_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "3개 소스 동시 검색 (arXiv + Semantic Scholar + OpenAlex)."
+  },
+  "academic_trending": {
+    "required": [],
+    "params": {
+      "field": "string"
+    },
+    "description": "최신 트렌딩 논문 — OpenAlex에서 최근 인용 급증 논문."
+  },
+  "academic_paper_detail": {
+    "required": [
+      "arxiv_id"
+    ],
+    "params": {
+      "arxiv_id": "string"
+    },
+    "description": "arXiv 논문 상세 조회. 전체 초록, 저자, 카테고리, PDF URL."
+  },
+  "academic_citations": {
+    "required": [],
+    "params": {
+      "arxiv_id": "string",
+      "doi": "string",
+      "title": "string"
+    },
+    "description": "논문 인용 네트워크 (OpenAlex). cited_by_count + 인용한 논문 + 참조 논문 각 10개."
+  },
+  "academic_author": {
+    "required": [
+      "author_name"
+    ],
+    "params": {
+      "author_name": "string"
+    },
+    "description": "연구자 프로필 (OpenAlex). h-index, 소속, 인용수, 최근 논문 5개."
+  },
+  "academic_concepts": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "학술 개념/토픽 검색 (OpenAlex). 연구 분야 탐색용."
+  },
+  "crypto_daily_history": {
+    "required": [],
+    "params": {
+      "coin": "string",
+      "currency": "string",
+      "days": "integer"
+    },
+    "description": "크립토 일봉 히스토리 (CryptoCompare). 5300+ 코인 지원."
+  },
+  "crypto_hourly_history": {
+    "required": [],
+    "params": {
+      "coin": "string",
+      "currency": "string",
+      "hours": "integer"
+    },
+    "description": "크립토 시간봉 히스토리."
+  },
+  "crypto_top_coins": {
+    "required": [],
+    "params": {
+      "currency": "string",
+      "limit": "integer"
+    },
+    "description": "시가총액 상위 코인 목록 (가격, 시총, 24h변동)."
+  },
+  "us_stock_quote": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "미국 주식 실시간 시세 (Finnhub). symbol: AAPL, MSFT, NVDA 등."
+  },
+  "us_company_profile": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "미국 기업 프로필 (시총, 섹터, IPO일, 웹사이트)."
+  },
+  "us_economic_calendar": {
+    "required": [],
+    "params": {},
+    "description": "미국 경제 캘린더 — FOMC, 고용, CPI 등 주요 이벤트."
+  },
+  "us_market_news": {
+    "required": [],
+    "params": {
+      "category": "string"
+    },
+    "description": "미국 시장 뉴스 (Finnhub). category: general, forex, crypto, merger."
+  },
+  "realestate_apt_trades": {
+    "required": [],
+    "params": {
+      "sigungu_code": "string",
+      "year_month": "string"
+    },
+    "description": "아파트 매매 실거래가 조회 (국토부). sigungu_code: 11110=종로, 11140=중구, 41135=성남분당."
+  },
+  "realestate_sigungu_codes": {
+    "required": [],
+    "params": {},
+    "description": "전국 시군구 코드 목록 (서울25구 + 6대광역시 + 경기 + 주요도시)."
+  },
+  "fsc_stock_price": {
+    "required": [],
+    "params": {
+      "stock_code": "string",
+      "rows": "integer"
+    },
+    "description": "금융위원회 주식시세 (data.go.kr). 종목코드 입력 → 일별 시세."
+  },
+  "fsc_bond_price": {
+    "required": [],
+    "params": {
+      "rows": "integer"
+    },
+    "description": "금융위원회 채권시세 (data.go.kr). 최근 채권 가격 정보."
+  },
+  "maritime_bdi": {
+    "required": [],
+    "params": {},
+    "description": "Baltic Dry Index (FRED). 벌크선 운임 지표. [주의: FRED 시리즈 중단으로 데이터 없을 수 있음]"
+  },
+  "maritime_container_index": {
+    "required": [],
+    "params": {},
+    "description": "Freightos Baltic Container Index. 컨테이너 운임. [주의: FRED 시리즈 중단으로 데이터 없을 수 있음]"
+  },
+  "maritime_ports": {
+    "required": [],
+    "params": {},
+    "description": "한국 주요 항만 정보."
+  },
+  "maritime_freight_snapshot": {
+    "required": [],
+    "params": {},
+    "description": "해운 운임 종합 (BDI + Container)."
+  },
+  "aviation_departures": {
+    "required": [],
+    "params": {
+      "airport": "string",
+      "hours": "integer"
+    },
+    "description": "공항 출발편 조회 (OpenSky). RKSI=인천, RKSS=김포, RKPC=제주."
+  },
+  "aviation_live_aircraft": {
+    "required": [],
+    "params": {},
+    "description": "현재 비행 중인 항공기 (전세계 상위 50)."
+  },
+  "aviation_korea_airports": {
+    "required": [],
+    "params": {},
+    "description": "한국 주요 공항 ICAO 코드."
+  },
+  "energy_crude_oil": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "WTI 원유 가격 (EIA). 일별 스팟."
+  },
+  "energy_natural_gas": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "Henry Hub 천연가스 가격 (EIA)."
+  },
+  "energy_price_snapshot": {
+    "required": [],
+    "params": {},
+    "description": "에너지 가격 종합 (원유 + 천연가스)."
+  },
+  "energy_eia_series": {
+    "required": [
+      "route"
+    ],
+    "params": {
+      "route": "string",
+      "series_id": "string",
+      "frequency": "string",
+      "limit": "integer"
+    },
+    "description": "EIA API v2 범용 시계열 조회. route 예: petroleum/pri/spt, electricity/retail-sales."
+  },
+  "energy_electricity": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "미국 전력 소매 판매 데이터 (EIA). [주의: 응답 구조 차이로 빈 결과 가능]"
+  },
+  "energy_bunker_fuel": {
+    "required": [],
+    "params": {},
+    "description": "벙커유(VLSFO proxy) 가격 — 해운업 원가 핵심 지표."
+  },
+  "energy_opec_production": {
+    "required": [],
+    "params": {},
+    "description": "OPEC 원유 생산량 (EIA 국제 데이터)."
+  },
+  "energy_weather_forecast": {
+    "required": [],
+    "params": {
+      "lat": "number",
+      "lon": "number",
+      "days": "integer"
+    },
+    "description": "날씨 예보 (Open-Meteo). 기본=서울. 기온, 강수량. 에너지 수요 예측용."
+  },
+  "energy_weather_cities": {
+    "required": [],
+    "params": {},
+    "description": "한국 전체 광역시도 날씨 (17개 시도). 에너지 수요/냉난방 분석용."
+  },
+  "agri_kamis_prices": {
+    "required": [],
+    "params": {
+      "product_code": "string"
+    },
+    "description": "KAMIS 농산물 가격 (100=채소, 200=과일, 300=수산, 400=축산)."
+  },
+  "agri_fao_info": {
+    "required": [],
+    "params": {},
+    "description": "FAO Food Price Index 정보."
+  },
+  "agri_product_codes": {
+    "required": [],
+    "params": {},
+    "description": "KAMIS 품목 분류 코드."
+  },
+  "agri_snapshot": {
+    "required": [],
+    "params": {},
+    "description": "농산물 가격 종합 (채소+과일+축산)."
+  },
+  "agri_fao_production": {
+    "required": [],
+    "params": {
+      "item_code": "string",
+      "area_code": "string",
+      "limit": "integer"
+    },
+    "description": "FAOSTAT 농업 생산량 (item: 0015=밀, 0027=쌀, 0056=옥수수. area: 410=한국)."
+  },
+  "agri_fao_trade": {
+    "required": [],
+    "params": {
+      "item_code": "string",
+      "area_code": "string",
+      "limit": "integer"
+    },
+    "description": "FAOSTAT 농산물 무역 데이터."
+  },
+  "agri_usda_psd": {
+    "required": [],
+    "params": {
+      "commodity": "string",
+      "country": "string"
+    },
+    "description": "USDA PSD 생산/공급/배분 데이터."
+  },
+  "trade_korea_exports": {
+    "required": [],
+    "params": {
+      "partner": "string",
+      "hs_code": "string",
+      "year": "string"
+    },
+    "description": "한국 수출 데이터 (UN Comtrade). partner 0=세계, 842=미국, 156=중국."
+  },
+  "trade_korea_imports": {
+    "required": [],
+    "params": {
+      "partner": "string",
+      "hs_code": "string",
+      "year": "string"
+    },
+    "description": "한국 수입 데이터."
+  },
+  "trade_country_codes": {
+    "required": [],
+    "params": {},
+    "description": "주요 국가 코드 (UN Comtrade)."
+  },
+  "politics_bills": {
+    "required": [],
+    "params": {
+      "age": "string",
+      "limit": "integer"
+    },
+    "description": "국회 발의 법안 목록. age: 22=22대 국회."
+  },
+  "politics_recent_bills": {
+    "required": [],
+    "params": {},
+    "description": "최근 발의 법안 (22대 국회, 상위 10개)."
+  },
+  "politics_finance_bills": {
+    "required": [],
+    "params": {},
+    "description": "금융 관련 법안 검색 안내."
+  },
+  "patent_search": {
+    "required": [
+      "keyword"
+    ],
+    "params": {
+      "keyword": "string",
+      "limit": "integer"
+    },
+    "description": "한국 특허 검색 (KIPRIS). 키워드로 특허 제목/출원인/날짜 조회."
+  },
+  "patent_trending": {
+    "required": [],
+    "params": {
+      "keyword": "string"
+    },
+    "description": "최근 AI/핀테크/로봇 관련 특허 트렌드."
+  },
+  "research_riss": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "page": "integer",
+      "count": "integer"
+    },
+    "description": "RISS 학술논문 검색 (국내 학위/학술지). [주의: API키 별도 승인 필요 — riss.kr/openAPI]"
+  },
+  "research_nkis": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "page": "integer",
+      "count": "integer"
+    },
+    "description": "NKIS 국책연구원 27개 보고서 검색 (KDI, KIEP, KIF 등)."
+  },
+  "research_prism": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "page": "integer",
+      "count": "integer"
+    },
+    "description": "PRISM 정부 정책연구과제 검색."
+  },
+  "research_nl": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "page": "integer",
+      "count": "integer"
+    },
+    "description": "국립중앙도서관 서지정보 검색 (ISBN, 도서, 자료)."
+  },
+  "research_nanet": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "page": "integer",
+      "count": "integer"
+    },
+    "description": "국회전자도서관 K-Scholar 법률/입법자료 검색."
+  },
+  "research_scholar": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "count": "integer"
+    },
+    "description": "Google Scholar 글로벌 학술검색 (rate limit 주의, 5건 기본)."
+  },
+  "sec_company_filings": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "form_type": "string",
+      "limit": "integer"
+    },
+    "description": "SEC EDGAR 공시 검색 (10-K, 10-Q, 8-K 등)."
+  },
+  "sec_company_facts": {
+    "required": [
+      "ticker"
+    ],
+    "params": {
+      "ticker": "string"
+    },
+    "description": "SEC XBRL 재무데이터 자동 추출 (Revenue, NetIncome, Assets 등 시계열)."
+  },
+  "sec_filing_text": {
+    "required": [
+      "filing_url"
+    ],
+    "params": {
+      "filing_url": "string",
+      "max_chars": "integer"
+    },
+    "description": "SEC 공시 본문 텍스트 추출 (HTML 제거)."
+  },
+  "health_fda_drugs": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "openFDA 의약품 검색 (브랜드명, 성분명, 적응증)."
+  },
+  "health_fda_recalls": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "openFDA 리콜/집행조치 검색."
+  },
+  "health_clinical_trials": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "status": "string",
+      "limit": "integer"
+    },
+    "description": "ClinicalTrials.gov 임상시험 검색 (status: RECRUITING, COMPLETED, NOT_YET_RECRUITING)."
+  },
+  "health_pubmed_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "PubMed 의학/생명과학 논문 검색."
+  },
+  "health_who_indicators": {
+    "required": [],
+    "params": {
+      "indicator_code": "string",
+      "country": "string"
+    },
+    "description": "WHO GHO 건강 지표 (WHOSIS_000001=기대수명, NCD_BMI_30A=비만율 등)."
+  },
+  "consumer_us_retail": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "미국 소매판매 데이터 (FRED/RSXFS). 월별."
+  },
+  "consumer_us_sentiment": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "미시간대 소비자심리지수 (FRED/UMCSENT)."
+  },
+  "consumer_us_housing": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "미국 주택착공 건수 (FRED/HOUST)."
+  },
+  "consumer_eu_hicp": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "유로존 소비자물가 조화지수 HICP (Eurostat)."
+  },
+  "environ_epa_air_quality": {
+    "required": [],
+    "params": {
+      "state": "string",
+      "year": "integer"
+    },
+    "description": "EPA 대기질 데이터 (미국 주별 오존/PM2.5). state: 36=NY, 06=CA."
+  },
+  "environ_carbon_price": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "탄소배출권 가격 (KRBN ETF proxy)."
+  },
+  "edinet_filings": {
+    "required": [],
+    "params": {
+      "date": "string",
+      "filing_type": "string"
+    },
+    "description": "EDINET 일본 기업공시 검색 (일자별). date: YYYY-MM-DD (기본=오늘)."
+  },
+  "edinet_company": {
+    "required": [
+      "edinet_code"
+    ],
+    "params": {
+      "edinet_code": "string"
+    },
+    "description": "EDINET 기업별 최근 공시 조회. edinet_code: E02529(토요타) 등."
+  },
+  "edinet_document": {
+    "required": [
+      "doc_id"
+    ],
+    "params": {
+      "doc_id": "string"
+    },
+    "description": "EDINET 문서 상세 조회. doc_id: S100XXXX."
+  },
+  "edinet_search": {
+    "required": [
+      "security_code"
+    ],
+    "params": {
+      "security_code": "string"
+    },
+    "description": "증권코드로 EDINET 기업 검색. security_code: 7203(토요타), 6758(소니) 등."
+  },
+  "rss_financial_news": {
+    "required": [],
+    "params": {
+      "feed": "string",
+      "limit": "integer"
+    },
+    "description": "금융 뉴스 RSS 피드 조회. feed='all'이면 전체, 아니면 특정 피드(bloomberg, wsj_markets, cnbc_top 등)."
+  },
+  "rss_search_news": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "전체 금융 RSS 피드에서 키워드 검색 (제목+요약, 대소문자 무관)."
+  },
+  "rss_available_feeds": {
+    "required": [],
+    "params": {},
+    "description": "사용 가능한 RSS 피드 목록 반환 (Bloomberg, WSJ, CNBC, Reuters, FT 등 14개)."
+  },
+  "rss_crypto_news": {
+    "required": [],
+    "params": {
+      "limit": "integer"
+    },
+    "description": "암호화폐 뉴스 (CoinDesk + CoinTelegraph RSS)."
+  },
+  "ta_indicators": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "indicators": "array"
+    },
+    "description": "기술 지표 종합 계산. OHLCV 데이터 입력 → SMA, EMA, RSI, MACD, BB 등 계산.\nindicators 예시: [\"sma_20\", \"sma_50\", \"ema_1"
+  },
+  "ta_rsi": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "period": "integer"
+    },
+    "description": "RSI(상대강도지수) 계산. period 기본값 14."
+  },
+  "ta_macd": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "fast": "integer",
+      "slow": "integer",
+      "signal": "integer"
+    },
+    "description": "MACD 계산. fast=12, slow=26, signal=9."
+  },
+  "ta_bollinger": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array",
+      "period": "integer",
+      "std_dev": "number"
+    },
+    "description": "볼린저 밴드 계산. period=20, std_dev=2.0."
+  },
+  "ta_summary": {
+    "required": [
+      "data"
+    ],
+    "params": {
+      "data": "array"
+    },
+    "description": "기술 분석 종합 요약. 모든 주요 지표 계산 + 매수/매도 시그널 생성."
+  },
+  "asia_china_quote": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "중국 주식 시세. symbol: 600519.SS=마오타이, 000001.SZ=평안은행, 601398.SS=ICBC."
+  },
+  "asia_china_index": {
+    "required": [],
+    "params": {},
+    "description": "중국 증시 지수 — SSE Composite (上证综指) + SZSE Component (深证成指)."
+  },
+  "asia_china_history": {
+    "required": [],
+    "params": {
+      "symbol": "string",
+      "period": "string"
+    },
+    "description": "중국 주식 과거 데이터 (OHLCV). period: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, ytd, max."
+  },
+  "asia_taiwan_quote": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "대만 주식 시세. symbol: 2330.TW=TSMC, 2317.TW=혼하이, 2454.TW=미디어텍."
+  },
+  "asia_taiwan_index": {
+    "required": [],
+    "params": {},
+    "description": "대만 가권지수 (TAIEX, 加權指數)."
+  },
+  "asia_hk_quote": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "홍콩 주식 시세. symbol: 0700.HK=텐센트, 9988.HK=알리바바, 1299.HK=AIA."
+  },
+  "asia_hk_index": {
+    "required": [],
+    "params": {},
+    "description": "홍콩 항셍지수 (Hang Seng Index, 恒生指數)."
+  },
+  "asia_market_overview": {
+    "required": [],
+    "params": {},
+    "description": "중국+대만+홍콩 아시아 3대 시장 지수 종합 현황."
+  },
+  "india_stock_quote": {
+    "required": [],
+    "params": {
+      "symbol": "string"
+    },
+    "description": "인도 주식 시세. symbol: RELIANCE.NS=릴라이언스, TCS.NS=TCS, INFY.NS=인포시스, HDFCBANK.NS=HDFC."
+  },
+  "india_index": {
+    "required": [],
+    "params": {},
+    "description": "인도 증시 지수 — Nifty 50 + BSE Sensex."
+  },
+  "india_stock_history": {
+    "required": [],
+    "params": {
+      "symbol": "string",
+      "period": "string"
+    },
+    "description": "인도 주식 과거 데이터 (OHLCV). period: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, ytd, max."
+  },
+  "regulation_eu_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "limit": "integer"
+    },
+    "description": "EU 법규 검색 (EUR-Lex). MiFID, GDPR, DORA, AI Act 등 유럽 금융·디지털 규제 검색."
+  },
+  "regulation_eu_text": {
+    "required": [
+      "celex_number"
+    ],
+    "params": {
+      "celex_number": "string"
+    },
+    "description": "EU 법규 본문 조회 (CELEX 번호). 예: 32016R0679 (GDPR), 32022R2554 (DORA)."
+  },
+  "regulation_key_financial": {
+    "required": [],
+    "params": {},
+    "description": "핵심 EU 금융 규제 19개 목록. MiFID II, GDPR, DORA, AI Act, MiCA, SFDR, PSD2, EMIR 등."
+  },
+  "regulation_finra_info": {
+    "required": [],
+    "params": {},
+    "description": "FINRA 주요 규정 참조 (미국). Suitability, Best Execution, Reg BI, AML 등 12개 규칙."
+  },
+  "vault_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "folder": "string",
+      "tags": "string",
+      "count": "integer"
+    },
+    "description": "Obsidian Vault 전문 검색. 키워드로 모든 노트 내용을 검색.\n\nArgs:\n    query: 검색어 (고정 문자열 매칭)\n    folder: 특정 폴더로 제한 (예:"
+  },
+  "vault_read": {
+    "required": [
+      "path"
+    ],
+    "params": {
+      "path": "string"
+    },
+    "description": "Obsidian Vault 노트 읽기.\n\nArgs:\n    path: vault 내 상대 경로 (예: \"02-Areas/crypto-markets/oracle-2026-03-18-"
+  },
+  "vault_list": {
+    "required": [],
+    "params": {
+      "folder": "string",
+      "agent": "string",
+      "days": "integer",
+      "count": "integer"
+    },
+    "description": "Obsidian Vault 노트 목록. 폴더/에이전트/기간으로 필터링.\n\nArgs:\n    folder: 폴더 경로 (예: \"02-Areas\", 빈 문자열이면 전체)\n    age"
+  },
+  "vault_recent": {
+    "required": [],
+    "params": {
+      "agent": "string",
+      "count": "integer"
+    },
+    "description": "최근 수정된 노트 목록 (빠른 조회).\n\nArgs:\n    agent: 에이전트 이름으로 필터 (빈 문자열이면 전체)\n    count: 최대 결과 수 (기본 10)"
+  },
+  "vault_tags": {
+    "required": [],
+    "params": {},
+    "description": "Obsidian Vault 전체 태그 목록 + 사용 빈도."
+  },
+  "vault_write": {
+    "required": [
+      "path",
+      "content",
+      "agent"
+    ],
+    "params": {
+      "path": "string",
+      "content": "string",
+      "agent": "string"
+    },
+    "description": "Obsidian Vault에 노트 쓰기/업데이트. 에이전트별 권한 체크.\n\nArgs:\n    path: vault 내 상대 경로 (예: \"02-Areas/crypto-markets"
+  },
+  "memory_store": {
+    "required": [
+      "content"
+    ],
+    "params": {
+      "content": "string",
+      "category": "string",
+      "importance": "number",
+      "source": "string"
+    },
+    "description": "중요한 사실/결정/선호를 영구 저장. category: user/feedback/project/reference/decision/general"
+  },
+  "memory_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "top_k": "integer",
+      "category": "string"
+    },
+    "description": "하이브리드 검색: 벡터(의미) + BM25(키워드) + RRF. 한국어 의미검색 지원."
+  },
+  "memory_list": {
+    "required": [],
+    "params": {
+      "category": "string",
+      "limit": "integer"
+    },
+    "description": "카테고리별 기억 목록 조회"
+  },
+  "memory_forget": {
+    "required": [
+      "memory_id"
+    ],
+    "params": {
+      "memory_id": "integer"
+    },
+    "description": "특정 기억 삭제 (soft delete)"
+  },
+  "memory_stats": {
+    "required": [],
+    "params": {},
+    "description": "메모리 시스템 통계"
+  },
+  "vault_index": {
+    "required": [],
+    "params": {
+      "mode": "string",
+      "folder": "string"
+    },
+    "description": "Vault 노트를 벡터 인덱싱. bge-m3 임베딩으로 시맨틱 검색 가능하게.\n\nArgs:\n    mode: \"full\" (전체 재인덱싱) 또는 \"incremental\" (변경분만"
+  },
+  "vault_semantic_search": {
+    "required": [
+      "query"
+    ],
+    "params": {
+      "query": "string",
+      "folder": "string",
+      "agent": "string",
+      "count": "integer",
+      "hybrid": "boolean"
+    },
+    "description": "Vault 시맨틱 검색. 의미 기반으로 관련 노트를 찾아줌.\n\nArgs:\n    query: 검색 쿼리 (자연어 가능, 예: \"통화정책과 금리 인하의 관계\")\n    folder:"
+  },
+  "vault_related": {
+    "required": [
+      "path"
+    ],
+    "params": {
+      "path": "string",
+      "count": "integer"
+    },
+    "description": "특정 노트와 유사한 노트 찾기. 지식 그래프 탐색용.\n\nArgs:\n    path: vault 내 노트 경로 (예: \"02-Areas/crypto-markets/analysis.m"
+  },
+  "space_sunspot_data": {
+    "required": [],
+    "params": {
+      "period": "string"
+    },
+    "description": "SILSO 월별 태양흑점 수 (최근 120개월). 태양 활동 주기 분석."
+  },
+  "space_solar_flares": {
+    "required": [],
+    "params": {
+      "days": "integer"
+    },
+    "description": "NASA DONKI 태양 플레어 이벤트 (classType, 시작/피크 시각)."
+  },
+  "space_geomagnetic": {
+    "required": [],
+    "params": {},
+    "description": "NOAA SWPC 행성 Kp 지수 — 지자기 폭풍 수준 (0~9)."
+  },
+  "space_solar_wind": {
+    "required": [],
+    "params": {},
+    "description": "NOAA SWPC 태양풍 플라즈마 (밀도, 속도, 온도) 최근 48건."
+  },
+  "space_cme_events": {
+    "required": [],
+    "params": {
+      "days": "integer"
+    },
+    "description": "NASA DONKI 코로나 질량 방출(CME) 이벤트."
+  },
+  "disaster_earthquakes": {
+    "required": [],
+    "params": {
+      "min_magnitude": "number",
+      "days": "integer",
+      "limit": "integer"
+    },
+    "description": "USGS 지진 데이터 (규모, 위치, 좌표, 쓰나미 여부)."
+  },
+  "disaster_volcanoes": {
+    "required": [],
+    "params": {
+      "days": "integer",
+      "limit": "integer"
+    },
+    "description": "NASA EONET 화산 활동 이벤트."
+  },
+  "disaster_wildfires": {
+    "required": [],
+    "params": {
+      "days": "integer",
+      "limit": "integer"
+    },
+    "description": "NASA EONET 산불 이벤트."
+  },
+  "disaster_floods": {
+    "required": [],
+    "params": {
+      "days": "integer"
+    },
+    "description": "GDACS 홍수 이벤트 (alert level, 국가, 좌표)."
+  },
+  "disaster_active_events": {
+    "required": [],
+    "params": {},
+    "description": "GDACS 현재 활성 재난 이벤트 (최근 7일, 모든 유형)."
+  },
+  "disaster_history": {
+    "required": [],
+    "params": {
+      "year": "integer"
+    },
+    "description": "연간 재난 통계 요약 — 지진 규모별 건수 + EONET 카테고리별 이벤트 수."
+  },
+  "conflict_active_wars": {
+    "required": [],
+    "params": {
+      "year": "integer"
+    },
+    "description": "UCDP 활성 무력 충돌 이벤트 (state-based, non-state, one-sided). year=0이면 올해."
+  },
+  "conflict_battle_deaths": {
+    "required": [],
+    "params": {
+      "country": "string",
+      "years": "integer"
+    },
+    "description": "UCDP 전투 사망자 연도별 시계열. 국가 미지정 시 글로벌 집계."
+  },
+  "conflict_country_risk": {
+    "required": [],
+    "params": {
+      "country_name": "string"
+    },
+    "description": "국가별 분쟁 위험도 평가 — UCDP 3년 이벤트 기반 (low/medium/high/critical)."
+  },
+  "conflict_peace_index": {
+    "required": [],
+    "params": {},
+    "description": "Global Peace Index 2024 — 가장 평화로운/위험한 국가 top/bottom 10."
+  },
+  "conflict_geopolitical_events": {
+    "required": [],
+    "params": {
+      "query": "string",
+      "days": "integer"
+    },
+    "description": "분쟁 관련 최근 이벤트 검색 (ACLED 키 있으면 ACLED, 없으면 UCDP)."
+  },
+  "climate_historical_weather": {
+    "required": [
+      "latitude",
+      "longitude",
+      "start_date",
+      "end_date"
+    ],
+    "params": {
+      "latitude": "number",
+      "longitude": "number",
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "특정 위치의 과거 날씨 데이터 (기온/강수/풍속). Open-Meteo archive API."
+  },
+  "climate_temperature_anomaly": {
+    "required": [],
+    "params": {
+      "period": "string"
+    },
+    "description": "NASA GISS 글로벌 기온 편차 (1951-1980 기준). 최근 120개월."
+  },
+  "climate_extreme_events": {
+    "required": [
+      "latitude",
+      "longitude",
+      "start_date",
+      "end_date"
+    ],
+    "params": {
+      "latitude": "number",
+      "longitude": "number",
+      "start_date": "string",
+      "end_date": "string"
+    },
+    "description": "극한 기상 일수 카운트: 폭염(>35C), 한파(<-10C), 폭우(>50mm)."
+  },
+  "climate_enso_index": {
+    "required": [],
+    "params": {},
+    "description": "NOAA 엘니뇨/라니냐 지수 (ONI). 최근 24분기."
+  },
+  "climate_city_comparison": {
+    "required": [
+      "cities"
+    ],
+    "params": {
+      "cities": "array"
+    },
+    "description": "도시별 날씨 비교 (최근 365일). cities: [{\"name\":\"Seoul\",\"lat\":37.5,\"lon\":127.0}, ...]"
+  },
+  "climate_crop_weather": {
+    "required": [],
+    "params": {},
+    "description": "주요 농업지역 작황 날씨 (미국 중서부/브라질/우크라이나). 최근 30일."
+  },
+  "power_grid_eu_generation": {
+    "required": [],
+    "params": {
+      "country_code": "string"
+    },
+    "description": "ENTSO-E 유럽 전력 발전원별 현황 (nuclear, wind, solar, gas, coal 등)."
+  },
+  "power_grid_eu_price": {
+    "required": [],
+    "params": {
+      "country_code": "string"
+    },
+    "description": "ENTSO-E 유럽 전력 Day-ahead 가격 (EUR/MWh)."
+  },
+  "power_grid_carbon_intensity": {
+    "required": [],
+    "params": {
+      "zone": "string"
+    },
+    "description": "Electricity Maps 실시간 탄소 집약도 (gCO2eq/kWh) 및 재생에너지 비율."
+  },
+  "power_grid_nuclear_status": {
+    "required": [],
+    "params": {},
+    "description": "EIA 미국 원자력 발전량 일별 데이터 (최근 30일)."
+  },
+  "power_grid_renewable_forecast": {
+    "required": [],
+    "params": {
+      "zone": "string"
+    },
+    "description": "Electricity Maps 발전원별 전력 생산 분석 (풍력/태양광/수력/바이오매스 등)."
+  },
+  "sentiment_google_trends": {
+    "required": [
+      "keywords"
+    ],
+    "params": {
+      "keywords": "array",
+      "timeframe": "string",
+      "geo": "string"
+    },
+    "description": "Google Trends 검색 관심도. keywords: 최대 5개, timeframe: 'today 3-m', 'today 12-m' 등."
+  },
+  "sentiment_wiki_pageviews": {
+    "required": [
+      "articles"
+    ],
+    "params": {
+      "articles": "array",
+      "days": "integer"
+    },
+    "description": "Wikipedia 문서 페이지뷰 (일별). articles: 문서 제목 리스트."
+  },
+  "sentiment_news_score": {
+    "required": [
+      "headlines"
+    ],
+    "params": {
+      "headlines": "array"
+    },
+    "description": "VADER 감성분석: 뉴스 헤드라인 긍정/부정/중립 점수. headlines: 문자열 리스트."
+  },
+  "sentiment_fear_greed_multi": {
+    "required": [],
+    "params": {},
+    "description": "Crypto Fear & Greed Index 30일 히스토리 + 해석 + 통계. defi_feargreed()은 단일/커스텀 일수, 이 도구는 30일 고정 + 분석."
+  },
+  "sentiment_keyword_correlation": {
+    "required": [
+      "keyword",
+      "stock_symbol"
+    ],
+    "params": {
+      "keyword": "string",
+      "stock_symbol": "string",
+      "days": "integer"
+    },
+    "description": "키워드 검색량 vs 주가 상관분석용 데이터. stocks_history와 함께 사용."
+  },
+  "ontology_map": {
+    "required": [],
+    "params": {
+      "domain": "string"
+    },
+    "description": "데이터 도메인 관계 지도. 도메인 지정 시 해당 도메인의 연결 관계 반환, 미지정 시 전체 요약.\n\nArgs:\n    domain: 도메인 키 (예: interest_rate, e"
+  },
+  "ontology_chain": {
+    "required": [
+      "source",
+      "target"
+    ],
+    "params": {
+      "source": "string",
+      "target": "string",
+      "max_depth": "integer"
+    },
+    "description": "두 도메인 간 인과 체인 탐색. BFS로 최단 경로 찾기.\n\nArgs:\n    source: 시작 도메인 (예: interest_rate)\n    target: 목표 도메인 (예:"
+  },
+  "ontology_impact": {
+    "required": [
+      "domain"
+    ],
+    "params": {
+      "domain": "string",
+      "direction": "string"
+    },
+    "description": "특정 도메인의 영향 분석.\n\nArgs:\n    domain: 분석 대상 도메인 (예: energy_price)\n    direction: \"downstream\" (이 도메인이 영향"
+  },
+  "ontology_suggest": {
+    "required": [
+      "scenario"
+    ],
+    "params": {
+      "scenario": "string"
+    },
+    "description": "분석 시나리오에 맞는 MCP 도구 추천. 한국어/영어 키워드 모두 지원.\n\nArgs:\n    scenario: 분석하고 싶은 시나리오 (예: \"엘니뇨가 곡물가격에 미치는 영향\", "
+  },
+  "ontology_save": {
+    "required": [],
+    "params": {},
+    "description": "온톨로지 그래프를 Obsidian Vault에 wikilink 연결 노트로 저장."
+  },
+  "quant_correlation": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "method": "string"
+    },
+    "description": "두 시계열 간 상관관계 분석 (Correlation between two time series).\n\nseries_a, series_b: [{\"date\": \"YYYY-MM-DD\", "
+  },
+  "quant_lagged_correlation": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "max_lag": "integer"
+    },
+    "description": "시차 상관분석 — A가 B를 몇 기간 선행하는지 분석 (Lagged correlation).\n\nseries_a, series_b: [{\"date\": \"YYYY-MM-DD\", \"va"
+  },
+  "quant_regression": {
+    "required": [
+      "dependent",
+      "independents"
+    ],
+    "params": {
+      "dependent": "array",
+      "independents": "array",
+      "independent_names": "array",
+      "method": "string"
+    },
+    "description": "다변량 회귀분석 — Y = b0 + b1*X1 + b2*X2 + ... (Multiple regression).\n\ndependent: Y 종속변수 [{\"date\": \"YYYY-MM"
+  },
+  "quant_granger_causality": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "max_lag": "integer"
+    },
+    "description": "그레인저 인과관계 검정 — A가 B를 예측하는 데 도움이 되는지 (Granger causality).\n\nseries_a, series_b: [{\"date\": \"YYYY-MM-DD\""
+  },
+  "quant_cointegration": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array"
+    },
+    "description": "공적분 검정 — 두 시계열 간 장기 균형관계 존재 여부 (Engle-Granger cointegration).\n\nseries_a, series_b: [{\"date\": \"YYYY-M"
+  },
+  "quant_var_decomposition": {
+    "required": [
+      "series_dict"
+    ],
+    "params": {
+      "series_dict": "object",
+      "lags": "integer",
+      "periods": "integer"
+    },
+    "description": "VAR 분산분해 — 변수 간 상호 영향력 분해 (Variance decomposition).\n\nseries_dict: {\"변수명\": [{\"date\": \"YYYY-MM-DD\", \"v"
+  },
+  "quant_event_study": {
+    "required": [
+      "price_series",
+      "event_dates"
+    ],
+    "params": {
+      "price_series": "array",
+      "event_dates": "array",
+      "window_before": "integer",
+      "window_after": "integer"
+    },
+    "description": "이벤트 스터디 — 특정 이벤트 전후 비정상 수익률 분석 (Event study / CAR).\n\nprice_series: 일별 가격 [{\"date\": \"YYYY-MM-DD\", \"va"
+  },
+  "quant_regime_detection": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "n_regimes": "integer",
+      "rolling_window": "integer"
+    },
+    "description": "시장 레짐 탐지 — 변동성 기반 국면 분류 (Market regime detection).\n\nseries: 가격 시계열 [{\"date\": \"YYYY-MM-DD\", \"value\": "
+  },
+  "ts_decompose": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "freq": "unknown",
+      "model": "string"
+    },
+    "description": "시계열 분해 (trend + seasonal + residual). freq: 12=월별, 52=주별, 365=일별. 자동 감지 가능."
+  },
+  "ts_stationarity": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "정상성 검정 (ADF + KPSS). is_stationary, p-value, 추천 조치 반환."
+  },
+  "ts_forecast": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "horizon": "integer",
+      "model": "string"
+    },
+    "description": "ARIMA 예측. 자동 차수 선택 (AIC 기준). 80%/95% 신뢰구간 포함."
+  },
+  "ts_seasonality": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "freq": "unknown"
+    },
+    "description": "계절성 패턴 추출. 월별/주별 평균, 강도, 피크/저점 기간 반환."
+  },
+  "ts_changepoint": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "n_changepoints": "integer"
+    },
+    "description": "변화점 탐지 (CUSUM + rolling mean). 구조적 변화 지점과 변화 크기 반환."
+  },
+  "ts_cross_correlation": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "max_lag": "integer"
+    },
+    "description": "교차상관 분석. 두 시계열 간 선행-후행 관계와 최대 상관 래그 반환."
+  },
+  "backtest_run": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "initial_capital": "number",
+      "commission": "number",
+      "tax": "number",
+      "params": "unknown",
+      "stop_loss": "unknown",
+      "take_profit": "unknown",
+      "position_size": "number",
+      "allow_short": "boolean"
+    },
+    "description": "전략 백테스트 실행 (커스텀 전략/복합 조건/손익절/공매도 지원).\n\nArgs:\n    ohlcv_data: OHLCV 가격 데이터 (list[dict] with date, ope"
+  },
+  "backtest_compare": {
+    "required": [
+      "ohlcv_data",
+      "strategy_names"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_names": "array",
+      "initial_capital": "number"
+    },
+    "description": "복수 전략 비교 백테스트. Compare multiple strategies on the same data.\n\nArgs:\n    ohlcv_data: OHLCV 가격 데이터\n   "
+  },
+  "backtest_optimize": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name",
+      "param_ranges"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "param_ranges": "object",
+      "initial_capital": "number"
+    },
+    "description": "전략 파라미터 최적화 (Grid Search). Optimize strategy parameters.\n\nArgs:\n    ohlcv_data: OHLCV 가격 데이터\n    str"
+  },
+  "backtest_portfolio": {
+    "required": [
+      "assets_data",
+      "weights"
+    ],
+    "params": {
+      "assets_data": "object",
+      "weights": "object",
+      "rebalance_freq": "string",
+      "initial_capital": "number"
+    },
+    "description": "포트폴리오 백테스트 (자산배분 + 리밸런싱). Portfolio backtest with rebalancing.\n\nArgs:\n    assets_data: 자산별 OHLCV 데이터"
+  },
+  "backtest_benchmark": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name",
+      "benchmark_data"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "benchmark_data": "array",
+      "initial_capital": "number"
+    },
+    "description": "전략 vs 벤치마크 비교. Compare strategy against buy-and-hold benchmark.\n\nArgs:\n    ohlcv_data: 전략 대상 OHLCV 데"
+  },
+  "backtest_risk": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "initial_capital": "number"
+    },
+    "description": "전략 리스크 분석. Strategy risk analysis.\n\nVaR (95%, 99%), CVaR, 연환산 변동성, 최대낙폭, Calmar ratio, Sortino ratio"
+  },
+  "backtest_signal_history": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "params": "unknown"
+    },
+    "description": "전략 시그널 히스토리 + 후행 수익률. Historical signal analysis with forward returns.\n\nArgs:\n    ohlcv_data: OHLCV "
+  },
+  "backtest_drawdown": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "initial_capital": "number"
+    },
+    "description": "낙폭(Drawdown) 상세 분석. Detailed drawdown period analysis.\n\nArgs:\n    ohlcv_data: OHLCV 가격 데이터\n    strat"
+  },
+  "factor_score": {
+    "required": [
+      "stocks_data"
+    ],
+    "params": {
+      "stocks_data": "object",
+      "financial_data": "object",
+      "factors": "array"
+    },
+    "description": "멀티팩터 스코어 산출 (Multi-factor scoring for stock universe).\n\nstocks_data: {ticker: [{date, open, high, lo"
+  },
+  "factor_backtest": {
+    "required": [
+      "stocks_data",
+      "factor_name"
+    ],
+    "params": {
+      "stocks_data": "object",
+      "factor_name": "string",
+      "n_quantiles": "integer",
+      "rebalance_freq": "string"
+    },
+    "description": "팩터 롱-숏 백테스트 (Factor long-short backtest by quantile).\n\nstocks_data: {ticker: [{date, open, high, low"
+  },
+  "factor_correlation": {
+    "required": [
+      "stocks_data"
+    ],
+    "params": {
+      "stocks_data": "object",
+      "financial_data": "object"
+    },
+    "description": "팩터 간 상관관계 분석 (Inter-factor correlation matrix).\n\nstocks_data: {ticker: [{date, open, high, low, clos"
+  },
+  "factor_exposure": {
+    "required": [
+      "portfolio_weights",
+      "stocks_data"
+    ],
+    "params": {
+      "portfolio_weights": "object",
+      "stocks_data": "object",
+      "financial_data": "object"
+    },
+    "description": "포트폴리오 팩터 익스포저 분석 (Portfolio factor exposure analysis).\n\nportfolio_weights: {ticker: weight} (합계 ~1.0"
+  },
+  "factor_timing": {
+    "required": [
+      "stocks_data",
+      "factor_name"
+    ],
+    "params": {
+      "stocks_data": "object",
+      "factor_name": "string",
+      "lookback": "integer"
+    },
+    "description": "팩터 타이밍 / 레짐 분석 (Factor timing — is this factor working now?).\n\nstocks_data: {ticker: [{date, open, h"
+  },
+  "factor_custom": {
+    "required": [
+      "stocks_data",
+      "custom_formula"
+    ],
+    "params": {
+      "stocks_data": "object",
+      "custom_formula": "object"
+    },
+    "description": "커스텀 팩터 생성 및 검증 (Build and validate a custom factor).\n\nstocks_data: {ticker: [{date, open, high, low,"
+  },
+  "signal_scan": {
+    "required": [
+      "target_series",
+      "candidate_features"
+    ],
+    "params": {
+      "target_series": "array",
+      "candidate_features": "array",
+      "forward_period": "integer",
+      "method": "string"
+    },
+    "description": "IC 기반 피처 자동 스캐닝. Automated feature scanning via Information Coefficient.\n\n각 후보 피처의 예측력(IC)을 walk-for"
+  },
+  "signal_combine": {
+    "required": [
+      "signals",
+      "target_series"
+    ],
+    "params": {
+      "signals": "array",
+      "target_series": "array",
+      "method": "string"
+    },
+    "description": "복수 시그널 앙상블 결합. Combine multiple signals into an ensemble.\n\nz-score 정규화 후 가중 결합. 단일 시그널 대비 IC 개선율 제공."
+  },
+  "signal_decay": {
+    "required": [
+      "signal_series",
+      "target_series"
+    ],
+    "params": {
+      "signal_series": "array",
+      "target_series": "array",
+      "max_horizon": "integer"
+    },
+    "description": "시그널 감쇠(Decay) 분석. Signal decay analysis with half-life estimation.\n\n시간 경과에 따른 IC 변화 곡선 + half-life.\n"
+  },
+  "signal_capacity": {
+    "required": [
+      "signal_series",
+      "ohlcv_data"
+    ],
+    "params": {
+      "signal_series": "array",
+      "ohlcv_data": "array",
+      "initial_capital": "number"
+    },
+    "description": "시장충격 기반 시그널 용량 추정. Market impact capacity estimation.\n\n슬리피지가 알파의 50%를 잠식하는 자본 규모 = 최대 용량.\n모델: slippa"
+  },
+  "signal_regime_select": {
+    "required": [
+      "ohlcv_data",
+      "strategies"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategies": "array",
+      "n_regimes": "integer"
+    },
+    "description": "시장 레짐 탐지 + 전략 스위칭. Market regime detection with strategy selection.\n\n롤링 변동성 + 수익률 기반 레짐 분류 (bull/bea"
+  },
+  "signal_walkforward": {
+    "required": [
+      "ohlcv_data",
+      "strategy_name"
+    ],
+    "params": {
+      "ohlcv_data": "array",
+      "strategy_name": "string",
+      "train_window": "integer",
+      "test_window": "integer",
+      "n_splits": "unknown",
+      "params": "unknown"
+    },
+    "description": "Walk-Forward 검증 — 과적합 방지 핵심 도구. The most important validation tool.\n\n미래 데이터 누출 없이 전략을 시간순으로 분할 평가.\nI"
+  },
+  "portfolio_optimize": {
+    "required": [
+      "assets_returns"
+    ],
+    "params": {
+      "assets_returns": "object",
+      "method": "string",
+      "risk_free_rate": "number",
+      "target_return": "unknown"
+    },
+    "description": "Markowitz 평균-분산 포트폴리오 최적화. Mean-variance portfolio optimization.\n\nArgs:\n    assets_returns: 자산별 일일 수"
+  },
+  "portfolio_risk_parity": {
+    "required": [
+      "assets_returns"
+    ],
+    "params": {
+      "assets_returns": "object"
+    },
+    "description": "리스크 패리티 포트폴리오. Risk Parity — equal risk contribution per asset.\n\nArgs:\n    assets_returns: 자산별 일일 수익"
+  },
+  "portfolio_kelly": {
+    "required": [
+      "win_rate",
+      "avg_win",
+      "avg_loss"
+    ],
+    "params": {
+      "win_rate": "number",
+      "avg_win": "number",
+      "avg_loss": "number",
+      "fraction": "number"
+    },
+    "description": "켈리 기준 최적 베팅 비율. Kelly Criterion for optimal position sizing.\n\nArgs:\n    win_rate: 승률 (0~1, 예: 0.55 ="
+  },
+  "portfolio_correlation_matrix": {
+    "required": [
+      "assets_returns"
+    ],
+    "params": {
+      "assets_returns": "object",
+      "window": "integer"
+    },
+    "description": "상관행렬 분석 + 분산비율. Correlation matrix with regime detection.\n\nArgs:\n    assets_returns: 자산별 일일 수익률 {tic"
+  },
+  "portfolio_stress_test": {
+    "required": [
+      "portfolio_weights"
+    ],
+    "params": {
+      "portfolio_weights": "object",
+      "scenario": "string",
+      "assets_returns": "unknown",
+      "custom_shocks": "unknown"
+    },
+    "description": "스트레스 테스트. Stress test with historical/custom scenarios.\n\nArgs:\n    portfolio_weights: 현재 포트폴리오 비중 {t"
+  },
+  "portfolio_rebalance": {
+    "required": [
+      "current_weights",
+      "target_weights"
+    ],
+    "params": {
+      "current_weights": "object",
+      "target_weights": "object",
+      "threshold": "number",
+      "transaction_cost": "number"
+    },
+    "description": "리밸런싱 필요 여부 + 비용 분석. Rebalancing check with cost-benefit analysis.\n\nArgs:\n    current_weights: 현재 비중 "
+  },
+  "historical_shiller": {
+    "required": [],
+    "params": {
+      "start_year": "integer",
+      "end_year": "integer"
+    },
+    "description": "Shiller S&P 500 장기 데이터 (1871~현재). CAPE ratio, CPI, 배당수익률, 장기금리 포함. / Shiller S&P 500 long-term data "
+  },
+  "historical_french_factors": {
+    "required": [],
+    "params": {
+      "dataset": "string",
+      "frequency": "string"
+    },
+    "description": "Fama-French 팩터 데이터 (1926~현재). dataset: 5_factors/3_factors/momentum. frequency: monthly/annual. / Fa"
+  },
+  "historical_nber_cycles": {
+    "required": [],
+    "params": {},
+    "description": "NBER 미국 경기 순환 날짜 (1854~현재, 34사이클). 현재 국면, 평균 확장/수축 기간 포함. / NBER US Business Cycle dates with contra"
+  },
+  "historical_fred_century": {
+    "required": [],
+    "params": {
+      "series_id": "string",
+      "start": "string"
+    },
+    "description": "FRED 초장기 시계열. 인기 시리즈: CPIAUCSL(1913), TB3MS(1934), UNRATE(1948), GDP(1947), M2SL(1959), DGS10(1962),"
+  },
+  "historical_gold_oil": {
+    "required": [],
+    "params": {
+      "asset": "string",
+      "period": "string"
+    },
+    "description": "금/유가 초장기 가격. asset: gold(1968+), oil(1986+), brent(1987+). FRED 우선, yfinance 폴백. / Long-term gold & "
+  },
+  "historical_crisis_comparison": {
+    "required": [],
+    "params": {
+      "events": "string",
+      "window_months": "integer"
+    },
+    "description": "위기 간 S&P 500 비교 — 이벤트 전후 정규화(100 기준). events: 쉼표 구분 날짜. / Cross-century crisis comparison — S&P 500 "
+  },
+  "vol_garch": {
+    "required": [
+      "returns_series"
+    ],
+    "params": {
+      "returns_series": "array",
+      "p": "integer",
+      "q": "integer",
+      "horizon": "integer"
+    },
+    "description": "GARCH(p,q) 변동성 모델 피팅 + 예측.\n\nArgs:\n    returns_series: 일별 수익률 또는 가격 데이터 (list[dict] with date, value)"
+  },
+  "vol_egarch": {
+    "required": [
+      "returns_series"
+    ],
+    "params": {
+      "returns_series": "array",
+      "horizon": "integer"
+    },
+    "description": "EGARCH(1,1,1) 비대칭 변동성 모델. 레버리지 효과 포착 (하락이 상승보다 변동성 증가에 더 큰 영향).\n\nArgs:\n    returns_series: 일별 수익률 또는"
+  },
+  "vol_surface": {
+    "required": [
+      "returns_series"
+    ],
+    "params": {
+      "returns_series": "array"
+    },
+    "description": "변동성 표면: 다중 시간창(5~252일) 실현변동성 + 과거 백분위 + 변동성 콘.\n\nArgs:\n    returns_series: 일별 수익률 또는 가격 데이터 (list[dic"
+  },
+  "vol_regime": {
+    "required": [
+      "returns_series"
+    ],
+    "params": {
+      "returns_series": "array",
+      "n_regimes": "integer"
+    },
+    "description": "HMM(Hidden Markov Model) 변동성 레짐 탐지. 시장의 숨겨진 상태(저변동/고변동) 식별.\n\nArgs:\n    returns_series: 일별 수익률 또는 가격 "
+  },
+  "vol_forecast_ensemble": {
+    "required": [
+      "returns_series"
+    ],
+    "params": {
+      "returns_series": "array",
+      "horizon": "integer"
+    },
+    "description": "4-모델 앙상블 변동성 예측: GARCH + EWMA(RiskMetrics) + 실현변동성 + 과거평균.\n역예측오차 가중 평균으로 결합.\n\nArgs:\n    returns_seri"
+  },
+  "vol_vix_term": {
+    "required": [],
+    "params": {},
+    "description": "VIX 기간구조 분석: VIX vs VIX3M 콘탱고/백워데이션.\n콘탱고(VIX < VIX3M): 시장 안정/자만. 백워데이션(VIX > VIX3M): 공포/위기.\n\nReturns"
+  },
+  "math_kalman": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "process_noise": "number",
+      "measurement_noise": "number",
+      "benchmark": "array"
+    },
+    "description": "칼만 필터 — 노이즈 제거 + 동적 추세 추출. Kalman Filter for noise removal & trend extraction.\n\n가격 시계열에서 관측 노이즈를 제거하"
+  },
+  "math_hurst": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "method": "string"
+    },
+    "description": "허스트 지수 — 추세 지속성 vs 평균 회귀 판별. Hurst Exponent for regime detection.\n\nH > 0.5: 추세 지속(모멘텀), H < 0.5: 평균 "
+  },
+  "math_entropy": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "n_bins": "integer",
+      "apen_m": "integer",
+      "apen_r_factor": "number"
+    },
+    "description": "정보 엔트로피 — 시계열 예측 가능성 측정. Information Entropy for predictability scoring.\n\nShannon 엔트로피: 수익률 분포의 불확실성"
+  },
+  "math_wavelets": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "wavelet": "string",
+      "levels": "integer"
+    },
+    "description": "웨이블릿 분해 — 다중 시간 스케일 분석. Wavelet Decomposition for multi-resolution analysis.\n\n이산 웨이블릿 변환(DWT)으로 시계열을"
+  },
+  "math_fractal": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "method": "string"
+    },
+    "description": "프랙탈 차원 — 시장 복잡도/효율성 측정. Fractal Dimension for market complexity analysis.\n\n박스 카운팅 방법으로 시계열의 프랙탈 차원을 "
+  },
+  "math_monte_carlo": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "n_simulations": "integer",
+      "horizon": "integer",
+      "model": "string"
+    },
+    "description": "몬테카를로 시뮬레이션 — 미래 가격 확률 분포 추정. Monte Carlo Simulation for forward projection.\n\n기하 브라운 운동(GBM) 모델로 n개 "
+  },
+  "stat_arb_ou_fit": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "Ornstein-Uhlenbeck 프로세스 피팅 — 평균회귀 파라미터 추정.\n\n스프레드 시계열에 OU 모델 dX = θ(μ-X)dt + σdW를 MLE로 피팅합니다.\n회귀 속도(θ"
+  },
+  "stat_arb_pairs_distance": {
+    "required": [
+      "universe",
+      "names"
+    ],
+    "params": {
+      "universe": "array",
+      "names": "array",
+      "top_n": "integer",
+      "formation_days": "integer"
+    },
+    "description": "Distance method 페어 선별 — Gatev-Goetzmann-Rouwenhorst 방법.\n\nN개 종목의 정규화 가격 경로 간 SSD(Sum of Squared Devia"
+  },
+  "stat_arb_spread_zscore": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "window": "integer",
+      "entry_z": "number",
+      "exit_z": "number"
+    },
+    "description": "스프레드 z-score 분석 — 헤지비율 + 매매 시그널 생성.\n\nOLS 헤지비율로 스프레드를 구성하고 롤링 z-score를 계산합니다.\nADF 공적분 검정, 진입/청산 시그널, "
+  },
+  "stat_arb_copula": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "copula_type": "string"
+    },
+    "description": "코풀라 의존성 분석 — 꼬리 의존성 측정.\n\n두 자산 수익률의 결합 분포를 코풀라로 모델링합니다.\n선형 상관으로 포착 못하는 꼬리 의존성(tail dependence)을 측정:\n\""
+  },
+  "stat_arb_halflife": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "평균 회귀 반감기 — AR(1) 기반 추정.\n\n스프레드가 편차의 절반만큼 회귀하는 데 걸리는 기간(일).\nhalf_life = -ln(2)/ln(b), b는 AR(1) 계수.\n< "
+  },
+  "stat_arb_backtest": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "window": "integer",
+      "entry_z": "number",
+      "exit_z": "number",
+      "stop_loss_z": "number",
+      "commission_pct": "number"
+    },
+    "description": "z-score 평균회귀 전략 백테스트 — 페어 트레이딩 시뮬레이션.\n\n롤링 OLS 헤지비율 + z-score 기반 진입/청산으로 페어 트레이딩을 백테스트합니다.\n손절(stop_lo"
+  },
+  "portadv_rmt_clean": {
+    "required": [
+      "series_list",
+      "names"
+    ],
+    "params": {
+      "series_list": "array",
+      "names": "array"
+    },
+    "description": "Random Matrix Theory 상관행렬 정제 — Marchenko-Pastur 노이즈 제거.\n\n경험적 상관행렬의 고유값 중 MP 분포 경계 이하(=노이즈)를 식별하고\n평균값"
+  },
+  "portadv_black_litterman": {
+    "required": [
+      "series_list",
+      "names"
+    ],
+    "params": {
+      "series_list": "array",
+      "names": "array",
+      "market_caps": "array",
+      "views": "array",
+      "tau": "number",
+      "risk_free_rate": "number",
+      "risk_aversion": "number"
+    },
+    "description": "Black-Litterman 포트폴리오 — 시장균형 + 투자자 뷰 결합.\n\nCAPM 균형 수익률에 투자자의 전망(views)을 베이지안으로 결합합니다.\n뷰 없이 호출하면 시장 균형"
+  },
+  "portadv_hrp": {
+    "required": [
+      "series_list",
+      "names"
+    ],
+    "params": {
+      "series_list": "array",
+      "names": "array"
+    },
+    "description": "Hierarchical Risk Parity — 공분산 역행렬 없는 트리 기반 배분.\n\nLópez de Prado의 HRP: 상관 거리로 계층적 클러스터링 →\n유사 대각화 → 재귀"
+  },
+  "portadv_johansen": {
+    "required": [
+      "series_list",
+      "names"
+    ],
+    "params": {
+      "series_list": "array",
+      "names": "array",
+      "det_order": "integer",
+      "k_ar_diff": "integer"
+    },
+    "description": "Johansen 다변량 공적분 검정 — N개 자산의 장기 균형 관계.\n\nEngle-Granger(2변수)의 다변량 확장. Trace/Max-eigenvalue 통계량으로\n공적분 관"
+  },
+  "portadv_info_theory": {
+    "required": [
+      "series_a",
+      "series_b"
+    ],
+    "params": {
+      "series_a": "array",
+      "series_b": "array",
+      "n_bins": "integer",
+      "te_lags": "integer"
+    },
+    "description": "정보이론 분석 — KL divergence + Transfer Entropy + Mutual Information.\n\nKL divergence: 두 수익률 분포의 차이 (레짐 전환"
+  },
+  "portadv_compare": {
+    "required": [
+      "series_list",
+      "names"
+    ],
+    "params": {
+      "series_list": "array",
+      "names": "array",
+      "risk_free_rate": "number"
+    },
+    "description": "포트폴리오 방법론 비교 — Equal Weight vs Min Variance vs HRP vs Inverse Vol.\n\n4가지 포트폴리오 구축 방법의 가중치, 기대수익, 변동성,"
+  },
+  "stochvol_heston": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "Heston 확률적 변동성 모델 — 변동성이 확률적으로 변하는 모델 캘리브레이션.\n\ndS/S = μdt + √v·dW₁, dv = κ(θ-v)dt + ξ√v·dW₂, corr(W₁"
+  },
+  "stochvol_jump_diffusion": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "Merton 점프확산 모델 — 갑작스런 가격 점프를 포함한 수익률 모델.\n\ndS/S = (μ-λk)dt + σdW + JdN. J~N(μ_J, σ_J²), N~Poisson(λ)."
+  },
+  "stochvol_var_premium": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "vix_series": "array",
+      "window": "integer"
+    },
+    "description": "분산 리스크 프리미엄 — 내재변동성 vs 실현변동성 스프레드.\n\nVRP = IV - RV. 양수면 옵션이 비싸다 → 변동성 매도 수익.\n역사적으로 주식 옵션은 평균 2-4%p의 양"
+  },
+  "stochvol_exec_optimal": {
+    "required": [
+      "total_shares"
+    ],
+    "params": {
+      "total_shares": "number",
+      "horizon_days": "integer",
+      "daily_volume": "number",
+      "volatility": "number",
+      "permanent_impact": "number",
+      "temporary_impact": "number",
+      "risk_aversion": "number"
+    },
+    "description": "Almgren-Chriss 최적실행 — 비용+리스크 최소화 실행 궤적.\n\nmin E[cost] + λ·Var[cost]. 해: x_k = X·sinh(κ(T-t_k))/sinh(κ"
+  },
+  "stochvol_exec_vwap": {
+    "required": [
+      "series",
+      "total_shares"
+    ],
+    "params": {
+      "series": "array",
+      "total_shares": "number",
+      "n_buckets": "integer"
+    },
+    "description": "VWAP 실행 계획 — 과거 거래량 프로파일 기반 시간별 배분.\n\n과거 거래량 패턴을 분석하여 시간대별 주문 비율을 결정합니다.\n거래량 데이터가 없으면 TWAP(균등 배분)으로 폴"
+  },
+  "stochvol_impact": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "window": "integer"
+    },
+    "description": "시장 충격 추정 — Kyle's λ + Roll 스프레드 + Amihud.\n\nKyle's lambda: 주문흐름 1단위당 가격 변화 (OLS 추정).\nRoll spread: 가격변"
+  },
+  "micro_kyle_lambda": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "window": "integer"
+    },
+    "description": "Kyle's λ 가격충격 계수 — 주문흐름 1단위당 가격 변화.\n\nOLS 회귀: Δprice = c + λ·signed_volume + ε.\nλ > 0: 매수 주문 → 가격 상승 "
+  },
+  "micro_lee_ready": {
+    "required": [
+      "trades"
+    ],
+    "params": {
+      "trades": "array"
+    },
+    "description": "Lee-Ready 거래 분류 — 매수/매도 주도 거래 식별.\n\nQuote rule: 거래가 > mid → 매수 주도. Tick test: 상승틱 → 매수.\n호가 데이터(bid/as"
+  },
+  "micro_roll_spread": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "Roll 유효 스프레드 — 가격변동 자기공분산으로 스프레드 추정.\n\nspread = 2·√(−Cov(Δp_t, Δp_{t-1})). 호가 데이터 없이도 추정 가능.\n음의 자기공분산"
+  },
+  "micro_amihud": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array"
+    },
+    "description": "Amihud 비유동성 비율 — |수익률|/거래대금 일별 평균.\n\n값이 클수록 비유동적. 소형주 > 대형주. 위기 시 급등.\n거래량 데이터 포함 시 정확한 비율, 없으면 플레이스홀더"
+  },
+  "micro_orderbook_imbalance": {
+    "required": [
+      "orderbook"
+    ],
+    "params": {
+      "orderbook": "object"
+    },
+    "description": "호가창 불균형 — 매수/매도 물량비 (1/5/10/20 호가).\n\nOBI = (bid_vol − ask_vol)/(bid_vol + ask_vol).\n양수 = 매수 압력, 음수 ="
+  },
+  "micro_toxicity": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "bucket_volume": "number",
+      "n_buckets": "integer"
+    },
+    "description": "VPIN 독성흐름 — 정보 비대칭 거래 확률 (Easley, López de Prado & O'Hara).\n\n볼륨 동기화 샘플링 후 BVC(Bulk Volume Classifica"
+  },
+  "cquant_funding_rate": {
+    "required": [],
+    "params": {
+      "symbol": "string",
+      "exchange": "string"
+    },
+    "description": "영구선물 펀딩레이트 — 현재 + 히스토리 + 연환산.\n\n8시간마다 롱↔숏 간 지불하는 펀딩레이트를 조회합니다.\n양수: 롱이 숏에 지불 → 숏 포지션이 수익.\n연환산 = rate ×"
+  },
+  "cquant_basis_term": {
+    "required": [],
+    "params": {
+      "base": "string",
+      "exchange": "string"
+    },
+    "description": "선물 베이시스 기간구조 — 현물 vs 선물 가격 차이.\n\nContango (선물 > 현물): 정상, 캐리 수익 가능.\nBackwardation (선물 < 현물): 시장 스트레스 신"
+  },
+  "cquant_funding_arb": {
+    "required": [],
+    "params": {
+      "symbols": "array",
+      "exchange": "string",
+      "min_annualized": "number"
+    },
+    "description": "펀딩레이트 차익 스캐너 — 상위 캐리 기회 탐색.\n\n주요 10개 종목의 펀딩레이트를 스캔하여 연환산 수익 순으로 정렬합니다.\n전략: rate > 0이면 long spot + sho"
+  },
+  "cquant_open_interest": {
+    "required": [],
+    "params": {
+      "symbol": "string",
+      "exchange": "string"
+    },
+    "description": "미결제약정 + 레버리지 메트릭 — 시장 포지셔닝 분석.\n\nOI(미결제약정): 열린 선물 계약의 총 규모.\nOI/거래량 비율이 높으면 레버리지 축적 → 변동성 폭발 위험.\n\nArgs"
+  },
+  "cquant_liquidation_levels": {
+    "required": [],
+    "params": {
+      "symbol": "string",
+      "exchange": "string",
+      "leverage_levels": "array"
+    },
+    "description": "청산 캐스케이드 레벨 추정 — 레버리지별 청산 가격.\n\n각 레버리지(2x~100x)에서 롱/숏 포지션이 청산되는 가격대를 계산합니다.\n5% 하락 → 20x 롱 청산, 10% 하락 "
+  },
+  "cquant_carry_backtest": {
+    "required": [
+      "series",
+      "funding_rates"
+    ],
+    "params": {
+      "series": "array",
+      "funding_rates": "array",
+      "initial_capital": "number"
+    },
+    "description": "펀딩레이트 캐리 전략 백테스트 — long spot + short perp.\n\nDelta-neutral 포지션에서 펀딩레이트 수익만 수집하는 전략.\nScienceDirect 202"
+  },
+  "onchain_adv_exchange_flow": {
+    "required": [],
+    "params": {
+      "timespan": "string"
+    },
+    "description": "거래소 유입/유출 활동 분석 — 온체인 트랜잭션 패턴.\n\n트랜잭션 수, 추정 거래량, 고유 주소 수의 30일 vs 90일 추세 비교.\n활동 증가 → 매집 또는 분배 단계. 감소 →"
+  },
+  "onchain_adv_mvrv": {
+    "required": [],
+    "params": {
+      "timespan": "string"
+    },
+    "description": "MVRV 비율 — 시가총액 / 실현시가총액.\n\n> 3.5: 역사적 고점 구간 (매도 신호). < 1.0: 역사적 저점 구간 (매수 신호).\n1.0~2.5: 적정 가치. 200일 S"
+  },
+  "onchain_adv_realized_cap": {
+    "required": [],
+    "params": {
+      "timespan": "string"
+    },
+    "description": "실현 시가총액 — 각 코인을 마지막 이동 시 가격으로 평가.\n\n시가총액보다 안정적. 미실현 이익 = (시가총액 - 실현시가총액)/실현시가총액.\n200일 SMA 프록시 사용.\n\nAr"
+  },
+  "onchain_adv_hodl_waves": {
+    "required": [],
+    "params": {},
+    "description": "HODL 파동 — BTC 보유 연령 분포 (Bitcoin Days Destroyed 기반).\n\nBDD(Bitcoin Days Destroyed) 비율로 장기 보유자 행동 추정.\nB"
+  },
+  "onchain_adv_whale_alert": {
+    "required": [],
+    "params": {
+      "threshold_btc": "number"
+    },
+    "description": "고래 거래 추적 — 대량 BTC 이체 감지.\n\nBlockchain.com 미확인 트랜잭션 풀에서 임계값 이상의 대량 거래를 탐색합니다.\n고래 거래 급증 → 큰 가격 움직임 선행 가"
+  },
+  "onchain_adv_nvt": {
+    "required": [],
+    "params": {
+      "timespan": "string"
+    },
+    "description": "NVT 비율 — 네트워크 가치 / 거래량 (크립토의 PER).\n\nNVT > 95: 과대평가 (가격이 사용량보다 빠르게 상승).\nNVT < 30: 저평가 (사용량 대비 가격이 낮음)"
+  },
+  "mlpipe_volume_bars": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "threshold": "number",
+      "bar_type": "string"
+    },
+    "description": "볼륨/달러/틱 바 — 정보 기반 샘플링 (López de Prado Ch.2).\n\n시간 바(1분/1시간) 대신 거래량이 임계값에 도달할 때마다 바를 생성합니다.\n시장이 활발할 때 "
+  },
+  "mlpipe_frac_diff": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "d": "number",
+      "threshold": "number"
+    },
+    "description": "분수 차분 — 정상성 확보 + 메모리 보존 (López de Prado Ch.5).\n\n정수 차분(d=1)은 정상성 확보하지만 모든 메모리 파괴.\n분수 차분(d=0.3~0.5)은 정"
+  },
+  "mlpipe_triple_barrier": {
+    "required": [
+      "series"
+    ],
+    "params": {
+      "series": "array",
+      "profit_taking": "number",
+      "stop_loss": "number",
+      "max_holding": "integer"
+    },
+    "description": "트리플 배리어 라벨링 — ML 학습용 라벨 생성 (López de Prado Ch.3).\n\n각 관측치에 3개 배리어 중 먼저 도달한 것으로 라벨 부여:\n+1: 이익실현 배리어 도달"
+  },
+  "mlpipe_meta_label": {
+    "required": [
+      "series",
+      "signals"
+    ],
+    "params": {
+      "series": "array",
+      "signals": "array",
+      "profit_taking": "number",
+      "stop_loss": "number",
+      "max_holding": "integer"
+    },
+    "description": "메타 라벨링 — 1차 모델이 맞는 타이밍 학습 (López de Prado Ch.3).\n\n1차 모델(방향 예측) 위에 2차 분류기를 얹어 \"이 시그널이 맞을까?\"를 학습.\n결과: "
+  },
+  "mlpipe_purged_cv": {
+    "required": [
+      "n_samples"
+    ],
+    "params": {
+      "n_samples": "integer",
+      "n_folds": "integer",
+      "embargo_pct": "number",
+      "label_horizon": "integer"
+    },
+    "description": "Purged K-Fold CV — 미래정보 누출 방지 교차검증 (López de Prado Ch.7).\n\n일반 K-Fold는 시계열에서 미래 정보가 학습에 포함됨.\nPurged C"
+  },
+  "mlpipe_feature_importance": {
+    "required": [
+      "features",
+      "labels"
+    ],
+    "params": {
+      "features": "array",
+      "labels": "array",
+      "feature_names": "array",
+      "n_estimators": "integer"
+    },
+    "description": "피처 중요도 3종 — MDI + MDA + SFI (López de Prado Ch.8).\n\nMDI (Mean Decrease Impurity): 트리 분할 기여도. 빠르지만 편향"
+  },
+  "alpha_turnover": {
+    "required": [
+      "weights_history"
+    ],
+    "params": {
+      "weights_history": "array",
+      "cost_per_trade": "number"
+    },
+    "description": "전략 회전율 분석 — 포지션 변경 빈도 + 거래비용 영향.\n\n매 리밸런싱마다 포지션 변경량(turnover)과 누적 거래비용을 계산합니다.\n연간 비용 > 알파면 전략이 의미 없음 "
+  },
+  "alpha_decay": {
+    "required": [
+      "signals",
+      "returns"
+    ],
+    "params": {
+      "signals": "array",
+      "returns": "array",
+      "horizons": "array"
+    },
+    "description": "알파 감쇠 곡선 — 시그널 예측력의 기간별 퇴화.\n\n1일, 2일, 5일, ... 60일 전방 수익률에 대한 IC(정보계수)를 측정합니다.\nIC 반감기: 시그널 예측력이 절반으로 줄"
+  },
+  "alpha_crowding": {
+    "required": [
+      "signal",
+      "factor_data"
+    ],
+    "params": {
+      "signal": "array",
+      "factor_data": "object"
+    },
+    "description": "시그널 군집도 탐지 — 공통 팩터 노출 측정.\n\n시그널을 알려진 팩터(모멘텀/가치/사이즈 등)로 회귀합니다.\nR² 높으면 → 시그널이 공통 팩터의 재포장 (낮은 알파 가능성).\nR"
+  },
+  "alpha_capacity": {
+    "required": [
+      "alpha",
+      "turnover"
+    ],
+    "params": {
+      "alpha": "number",
+      "turnover": "number",
+      "kyle_lambda": "number",
+      "avg_daily_volume": "number"
+    },
+    "description": "전략 용량 추정 — 알파 소멸 전 최대 운용 규모.\n\nGrinold-Kahn: capacity = alpha / (2·λ·turnover).\nADV 기반: 시장 참여율별 최대 AU"
+  },
+  "alpha_regime_switch": {
+    "required": [
+      "returns",
+      "signals"
+    ],
+    "params": {
+      "returns": "array",
+      "signals": "array",
+      "n_regimes": "integer"
+    },
+    "description": "레짐별 알파 — HMM/변동성 기반 레짐 분할 후 성과 비교.\n\n시장 레짐(고변동/저변동)별로 시그널의 IC와 Sharpe를 분리 측정합니다.\n\"이 전략은 어떤 시장 환경에서 작동"
+  },
+  "alpha_combine": {
+    "required": [
+      "alpha_series",
+      "returns"
+    ],
+    "params": {
+      "alpha_series": "object",
+      "returns": "array",
+      "method": "string"
+    },
+    "description": "멀티 알파 결합 — 여러 시그널을 하나의 종합 시그널로.\n\n방법: \"equal\" (동일가중), \"ic_weight\" (IC 비례), \"optimize\" (IR 최대화).\n개별 시그"
+  }
+}

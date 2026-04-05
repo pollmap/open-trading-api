@@ -417,10 +417,17 @@ class MCPDataProvider:
             return cached
 
         try:
-            args: Dict[str, Any] = {"stocks_data": list(tickers)}
+            # factor_score는 stocks_data: dict 형태 필요
+            # {"000720": {"name": "현대건설"}} 또는 주가 데이터 포함 가능
+            stocks_dict = {t: {"name": t} for t in tickers}
+            args: Dict[str, Any] = {"stocks_data": stocks_dict}
             if factors:
                 args["factors"] = factors
             result = await self._call_vps_tool("factor_score", args)
+            # 에러 문자열 방어 (normalize_factor_scores가 str에서 크래시)
+            if isinstance(result, dict) and isinstance(result.get("data"), str):
+                logger.warning("factor_score 에러: %s", result["data"][:100])
+                return {}
             scores = normalize_factor_scores(result)
             if scores:
                 self._set_cached(cache_key, scores)
@@ -603,6 +610,61 @@ class MCPDataProvider:
             "valid": valid,
             "expired": expired,
         }
+
+    # ══════════════════════════════════════════════════════════════
+    # 스키마 발견: 364도구 파라미터 자동 조회
+    # ══════════════════════════════════════════════════════════════
+
+    async def discover_tools(self) -> Dict[str, Dict]:
+        """VPS MCP 전체 도구 스키마 조회 (tools/list)
+
+        Returns:
+            {tool_name: {"required": [...], "params": {...}, "description": "..."}}
+        """
+        cached = self._get_cached("_tool_catalog")
+        if cached is not None:
+            return cached
+
+        await self._ensure_vps_session()
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/list",
+            "params": {},
+            "id": 99,
+        }
+        headers = self._vps_headers()
+        if self._vps_session_id:
+            headers["Mcp-Session-Id"] = self._vps_session_id
+
+        data = await self._post_mcp_sse(self._vps_url, payload, headers)
+        if not data:
+            return {}
+
+        tools = data.get("result", {}).get("tools", [])
+        catalog: Dict[str, Dict] = {}
+        for t in tools:
+            name = t.get("name", "")
+            schema = t.get("inputSchema", {})
+            catalog[name] = {
+                "required": schema.get("required", []),
+                "params": {
+                    k: v.get("type", "unknown")
+                    for k, v in schema.get("properties", {}).items()
+                },
+                "description": t.get("description", "")[:200],
+            }
+
+        self._set_cached("_tool_catalog", catalog, ttl=86400)  # 24시간 캐시
+        logger.info("MCP 도구 카탈로그 로딩: %d개", len(catalog))
+        return catalog
+
+    def discover_tools_sync(self) -> Dict[str, Dict]:
+        return _run_sync(self.discover_tools())
+
+    async def get_tool_schema(self, tool_name: str) -> Optional[Dict]:
+        """특정 도구의 스키마 조회"""
+        catalog = await self.discover_tools()
+        return catalog.get(tool_name)
 
     # ══════════════════════════════════════════════════════════════
     # Phase 7: KIS 백테스트 실행 + 결과 수집
