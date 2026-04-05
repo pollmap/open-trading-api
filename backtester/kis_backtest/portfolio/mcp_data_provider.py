@@ -27,9 +27,11 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import json as _json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 import httpx
@@ -46,6 +48,32 @@ logger = logging.getLogger(__name__)
 DEFAULT_VPS_HOST = os.environ.get("MCP_VPS_HOST", "62.171.141.206")
 DEFAULT_VPS_TOKEN = os.environ.get("MCP_VPS_TOKEN", "")
 DEFAULT_KIS_MCP_URL = os.environ.get("KIS_MCP_URL", "http://127.0.0.1:3846/mcp")
+
+
+def _load_token_from_mcp_json(
+    server_name: str = "nexus-finance",
+) -> str:
+    """~/.mcp.json에서 MCP 서버 Bearer 토큰 자동 추출
+
+    토큰 해결 체인: vps_token 인자 → MCP_VPS_TOKEN env → ~/.mcp.json → ""
+    오픈소스 사용자가 ~/.mcp.json에 토큰을 설정하면 자동으로 읽힘.
+    """
+    try:
+        mcp_json = Path.home() / ".mcp.json"
+        if not mcp_json.exists():
+            return ""
+        config = _json.loads(mcp_json.read_text(encoding="utf-8"))
+        headers = (
+            config.get("mcpServers", {})
+            .get(server_name, {})
+            .get("headers", {})
+        )
+        auth = headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            return auth[7:]  # "Bearer xxx" → "xxx"
+    except Exception as e:
+        logger.debug("~/.mcp.json 토큰 로딩 실패: %s", e)
+    return ""
 DEFAULT_TIMEOUT = 30
 DEFAULT_CACHE_TTL = 3600  # 1시간
 
@@ -79,13 +107,15 @@ class MCPDataProvider:
         timeout: int = DEFAULT_TIMEOUT,
     ):
         self._vps_host = vps_host or DEFAULT_VPS_HOST
-        self._vps_token = vps_token or DEFAULT_VPS_TOKEN
+        # 토큰 해결 체인: 인자 → 환경변수 → ~/.mcp.json → ""
+        self._vps_token = vps_token or DEFAULT_VPS_TOKEN or _load_token_from_mcp_json()
         self._kis_mcp_url = kis_mcp_url or DEFAULT_KIS_MCP_URL
         self._vps_url = f"http://{self._vps_host}/mcp"
         self._health_url = f"http://{self._vps_host}/health"
         self._cache_ttl = cache_ttl
         self._timeout = timeout
         self._cache: Dict[str, _CacheEntry] = {}
+        self._vps_session_id: Optional[str] = None  # Streamable HTTP 세션
 
     # ── 내부 유틸 ──────────────────────────────────────────────
 
@@ -107,10 +137,42 @@ class MCPDataProvider:
             headers["Authorization"] = f"Bearer {self._vps_token}"
         return headers
 
+    async def _ensure_vps_session(self) -> None:
+        """Streamable HTTP MCP 세션 초기화 (필요 시)"""
+        if self._vps_session_id:
+            return
+
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "initialize",
+            "params": {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {},
+                "clientInfo": {"name": "kis-quant-pipeline", "version": "1.0.0"},
+            },
+            "id": 0,
+        }
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            async with client.stream(
+                "POST", self._vps_url, json=payload, headers=self._vps_headers()
+            ) as resp:
+                resp.raise_for_status()
+                session_id = resp.headers.get("mcp-session-id")
+                if session_id:
+                    self._vps_session_id = session_id
+                    logger.info("VPS MCP 세션 초기화 완료: %s...", session_id[:8])
+                else:
+                    logger.warning("VPS MCP 세션 ID 미수신")
+                # SSE 응답 body 소비 (연결 정리)
+                async for _ in resp.aiter_lines():
+                    pass
+
     async def _call_vps_tool(
         self, tool_name: str, arguments: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """VPS MCP 도구 호출 (JSON-RPC over HTTP)"""
+        """VPS MCP 도구 호출 (Streamable HTTP + SSE 스트림)"""
+        await self._ensure_vps_session()
+
         payload = {
             "jsonrpc": "2.0",
             "method": "tools/call",
@@ -120,31 +182,72 @@ class MCPDataProvider:
             },
             "id": 1,
         }
-        async with httpx.AsyncClient(timeout=self._timeout) as client:
-            resp = await client.post(
-                self._vps_url,
-                json=payload,
-                headers=self._vps_headers(),
-            )
-            resp.raise_for_status()
-            data = resp.json()
+        headers = self._vps_headers()
+        if self._vps_session_id:
+            headers["Mcp-Session-Id"] = self._vps_session_id
 
-        # JSON-RPC result 추출
-        if "result" in data:
+        data = await self._post_mcp_sse(self._vps_url, payload, headers)
+
+        # 세션 만료 시 재초기화 후 재시도
+        if isinstance(data, dict) and "error" in data:
+            err_msg = str(data.get("error", {}).get("message", ""))
+            if "session" in err_msg.lower():
+                self._vps_session_id = None
+                await self._ensure_vps_session()
+                headers["Mcp-Session-Id"] = self._vps_session_id or ""
+                data = await self._post_mcp_sse(self._vps_url, payload, headers)
+
+        # JSON-RPC result에서 content 추출
+        if isinstance(data, dict) and "result" in data:
             result = data["result"]
-            # MCP tool result에서 content 추출
             if isinstance(result, dict) and "content" in result:
                 for item in result.get("content", []):
                     if item.get("type") == "text":
-                        import json
                         try:
-                            return json.loads(item["text"])
-                        except (json.JSONDecodeError, KeyError):
+                            return _json.loads(item["text"])
+                        except (_json.JSONDecodeError, KeyError):
                             return {"success": True, "data": item.get("text", "")}
             return result
-        if "error" in data:
+        if isinstance(data, dict) and "error" in data:
             raise RuntimeError(f"MCP error: {data['error']}")
-        return data
+        return data or {}
+
+    async def _post_mcp_sse(
+        self, url: str, payload: Dict, headers: Dict
+    ) -> Optional[Dict]:
+        """MCP SSE 스트림 POST 호출 — data: 라인 파싱"""
+        async with httpx.AsyncClient(timeout=self._timeout) as client:
+            async with client.stream(
+                "POST", url, json=payload, headers=headers
+            ) as resp:
+                resp.raise_for_status()
+                content_type = resp.headers.get("content-type", "")
+
+                if "text/event-stream" in content_type:
+                    # SSE 전체를 모아서 마지막 data: 라인 파싱
+                    all_data = []
+                    async for line in resp.aiter_lines():
+                        if line.startswith("data: "):
+                            all_data.append(line[6:])
+                    if all_data:
+                        # 여러 data: 라인이 올 수 있음 — 전체 합치기
+                        full_text = all_data[-1]
+                        try:
+                            return _json.loads(full_text)
+                        except _json.JSONDecodeError:
+                            # data: 라인이 여러 줄에 걸쳐 올 수 있음
+                            combined = "".join(all_data)
+                            try:
+                                return _json.loads(combined)
+                            except _json.JSONDecodeError:
+                                logger.warning("SSE 파싱 실패: %s...", combined[:100])
+                    return None
+                else:
+                    body = await resp.aread()
+                    try:
+                        return _json.loads(body)
+                    except _json.JSONDecodeError:
+                        return None
 
     async def _call_kis_tool(
         self, tool_name: str, arguments: Optional[Dict] = None
@@ -212,7 +315,7 @@ class MCPDataProvider:
         try:
             result = await self._call_vps_tool(
                 "ecos_get_base_rate",
-                {"stat_code": "722Y001", "item_code": "0101000"},
+                {},  # 인자 없이 호출 — MCP 도구가 기본 파라미터 사용
             )
             rate = self._parse_ecos_rate(result)
             if rate is not None:
@@ -226,29 +329,32 @@ class MCPDataProvider:
 
     @staticmethod
     def _parse_ecos_rate(result: Dict[str, Any]) -> Optional[float]:
-        """ECOS 결과에서 기준금리 파싱"""
+        """ECOS 결과에서 기준금리 파싱
+
+        실제 ECOS 응답: {"success": true, "data": [{"value": "2.75", ...}, ...]}
+        """
         if not result:
             return None
 
-        # success/data 구조
         data = result.get("data", result)
 
         # 직접 숫자인 경우
         if isinstance(data, (int, float)):
             return float(data) / 100 if data > 1 else float(data)
 
-        # dict에서 rate 필드 찾기
-        for key in ("rate", "base_rate", "value", "DATA_VALUE"):
-            if key in data:
-                val = float(data[key])
-                return val / 100 if val > 1 else val
-
-        # list인 경우 (최신 값)
+        # list인 경우 — 마지막 항목의 value (최신 금리)
         if isinstance(data, list) and data:
             last = data[-1] if isinstance(data[-1], dict) else {"value": data[-1]}
-            for key in ("rate", "base_rate", "value", "DATA_VALUE"):
+            for key in ("value", "rate", "base_rate", "DATA_VALUE"):
                 if key in last:
                     val = float(last[key])
+                    return val / 100 if val > 1 else val
+
+        # dict에서 rate 필드 찾기
+        if isinstance(data, dict):
+            for key in ("rate", "base_rate", "value", "DATA_VALUE"):
+                if key in data:
+                    val = float(data[key])
                     return val / 100 if val > 1 else val
 
         return None
@@ -275,7 +381,7 @@ class MCPDataProvider:
         try:
             result = await self._call_vps_tool(
                 "stocks_history",
-                {"ticker": ticker, "period": period},
+                {"stock_code": ticker},
             )
             returns = normalize_returns(result)
             if returns:
@@ -343,7 +449,7 @@ class MCPDataProvider:
 
         try:
             result = await self._call_vps_tool(
-                "stocks_history", {"ticker": ticker, "period": period}
+                "stocks_history", {"stock_code": ticker}
             )
             returns = normalize_returns(result)
             if returns:
