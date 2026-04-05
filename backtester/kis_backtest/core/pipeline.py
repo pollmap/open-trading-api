@@ -272,24 +272,25 @@ class QuantPipeline:
         if turb > 5.0:
             risk_details.append(f"TURB WARNING: 터뷸런스 {turb:.1f}x (>5x, 위기 수준)")
 
-        # 2a-1. VPIN 마이크로구조 체크 (MCP 있을 때만, 선택적)
+        # 2a-1. VPIN 마이크로구조 체크 (MCP 있을 때만, 비중 실제 조정)
         if self.mcp and factor_scores:
-            for ticker in list(factor_scores.keys())[:5]:  # 상위 5종목만
+            for ticker in list(factor_scores.keys())[:10]:
                 try:
                     toxicity = self.mcp.get_micro_toxicity_sync(ticker)
                     vpin = toxicity.get("vpin", 0) if toxicity else 0
+                    name = factor_scores.get(ticker, {}).get("name", ticker)
                     if vpin > 0.7:
-                        name = factor_scores.get(ticker, {}).get("name", ticker)
+                        adjusted_weights[ticker] = adjusted_weights.get(ticker, 0) * 0.5
                         risk_details.append(
-                            f"VPIN CRITICAL: {name} VPIN={vpin:.2f} (>0.7, 플래시크래시 위험)"
+                            f"VPIN CRITICAL: {name} 비중 50% 감소 (VPIN={vpin:.2f})"
                         )
                     elif vpin > 0.5:
-                        name = factor_scores.get(ticker, {}).get("name", ticker)
+                        adjusted_weights[ticker] = adjusted_weights.get(ticker, 0) * 0.8
                         risk_details.append(
-                            f"VPIN WARNING: {name} VPIN={vpin:.2f} (>0.5, 유동성 주의)"
+                            f"VPIN WARNING: {name} 비중 20% 감소 (VPIN={vpin:.2f})"
                         )
                 except Exception:
-                    pass  # MCP 실패 시 무시 — 기존 로직 유지
+                    pass  # MCP 실패 시 무시
 
         # 2b. 상관관계 모니터
         if returns_dict and len([t for t in returns_dict if len(returns_dict[t]) >= 30]) >= 2:
@@ -309,15 +310,16 @@ class QuantPipeline:
                 for ticker in adjusted_weights:
                     adjusted_weights[ticker] *= state.reduction_factor
 
-        # 3b. 알파 혼잡도 체크 (MCP 있을 때만, 선택적)
+        # 3b. 알파 혼잡도 체크 (MCP 있을 때만, 비중 실제 조정)
         if self.mcp and factor_scores:
             try:
                 crowding = self.mcp.get_alpha_crowding_sync(list(factor_scores.keys()))
                 for ticker, pct in crowding.items():
                     if pct > 0.8:
                         name = factor_scores.get(ticker, {}).get("name", ticker)
+                        adjusted_weights[ticker] = adjusted_weights.get(ticker, 0) * 0.7
                         risk_details.append(
-                            f"CROWDING: {name} 혼잡도 {pct:.0%} (>80%, 팩터 과밀 위험)"
+                            f"CROWDING: {name} 비중 30% 감소 (혼잡도 {pct:.0%})"
                         )
             except Exception:
                 pass  # MCP 실패 시 무시
@@ -353,6 +355,18 @@ class QuantPipeline:
             n_roundtrips=n_rt, fraction=self.config.kelly_fraction,
         )
 
+        # 4b. Kelly를 비중에 실제 적용 (장식→실전)
+        if 0 < kelly_alloc < 1.0:
+            for ticker in adjusted_weights:
+                adjusted_weights[ticker] *= kelly_alloc
+            risk_details.append(
+                f"KELLY: {kelly_alloc:.2f}x 적용 (Half-Kelly, after-cost)"
+            )
+        elif kelly_alloc <= 0:
+            for ticker in adjusted_weights:
+                adjusted_weights[ticker] = 0.0
+            risk_details.append("KELLY ZERO: 비용 후 알파 부재 → 전량 현금")
+
         # 5. 브릿지 → PortfolioOrder
         order = self.bridge.build_order(
             strategy_name=strategy_name,
@@ -377,6 +391,12 @@ class QuantPipeline:
         # 종합 리스크 판정
         all_details = risk_details + [d for d in order.risk_gate_details if d != "ALL PASS"]
         risk_passed = order.risk_gate_passed and not any("BREACH" in d for d in risk_details)
+
+        # 다중 VPIN CRITICAL → 전체 차단
+        vpin_criticals = [d for d in risk_details if "VPIN CRITICAL" in d]
+        if len(vpin_criticals) >= 3:
+            risk_passed = False
+            all_details.append("RISK HALT: 3+ 종목 VPIN CRITICAL → 전체 주문 차단")
 
         return PipelineResult(
             order=order,
@@ -428,3 +448,47 @@ class QuantPipeline:
             period_start=period_start,
             period_end=period_end,
         )
+
+    def run_with_backtest_feedback(
+        self,
+        factor_scores: Dict[str, Dict],
+        optimal_weights: Dict[str, float],
+        returns_dict: Optional[Dict[str, Sequence[float]]] = None,
+        strategy_id: str = "sma_crossover",
+        symbols: Optional[List[str]] = None,
+        **kwargs,
+    ) -> PipelineResult:
+        """1차 실행 → 백테스트 → 실제 Sharpe/MDD로 2차 실행 (피드백 루프)"""
+        # 1차: 가정값으로 실행
+        result1 = self.run(factor_scores, optimal_weights, returns_dict, **kwargs)
+
+        if not self.mcp:
+            return result1
+
+        # 백테스트 실행
+        bt_symbols = symbols or list(factor_scores.keys())[:5]
+        try:
+            bt = self.mcp.run_and_wait_backtest_sync(
+                strategy_id=strategy_id, symbols=bt_symbols,
+            )
+        except Exception as e:
+            logger.warning("백테스트 피드백 실패: %s", e)
+            return result1
+
+        if bt.get("status") != "completed":
+            return result1
+
+        # 2차: 실제 백테스트 Sharpe/MDD로 재실행
+        metrics = bt.get("result", {}).get("metrics", {})
+        real_sharpe = metrics.get("risk", {}).get("sharpe_ratio")
+        real_mdd = metrics.get("basic", {}).get("max_drawdown")
+
+        result2 = self.run(
+            factor_scores, optimal_weights, returns_dict,
+            backtest_sharpe=real_sharpe,
+            backtest_max_dd=-abs(float(real_mdd)) if real_mdd else None,
+            **kwargs,
+        )
+        feedback_msg = f"FEEDBACK: 백테스트 Sharpe={real_sharpe}, MDD={real_mdd} 반영"
+        result2.risk_details.insert(0, feedback_msg)
+        return result2

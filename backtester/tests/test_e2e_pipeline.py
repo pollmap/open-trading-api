@@ -54,9 +54,13 @@ class TestE2EPipelineNormal:
         )
 
         assert result.order is not None
-        assert result.order.n_stocks >= 4  # 공매도 클리핑으로 줄 수 있음
         assert result.estimated_annual_cost > 0
         assert result.kelly_allocation >= 0
+        # Kelly 적용 후: kelly>0이면 종목 있음, kelly=0이면 전량 현금 (올바른 동작)
+        if result.kelly_allocation > 0:
+            assert result.order.n_stocks >= 1
+        else:
+            assert result.order.n_stocks == 0  # 비용 후 알파 부재
 
     def test_pipeline_then_review(self):
         """파이프라인 실행 후 복기"""

@@ -365,24 +365,28 @@ class MCPDataProvider:
     # ── 벤치마크 수익률 (KRX/stocks_history) ──────────────────
 
     async def get_benchmark_returns(
-        self, ticker: str = "069500", period: str = "1y"
+        self, ticker: str = "069500", period: str = "1y",
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
     ) -> List[float]:
         """벤치마크(KODEX200 ETF) 일간 수익률 조회
 
         Args:
             ticker: 벤치마크 종목코드 (기본: 069500 KODEX200)
-            period: 조회 기간 ("3m", "6m", "1y", "2y")
+            start_date: 시작일 "YYYYMMDD" (예: "20210101")
+            end_date: 종료일 "YYYYMMDD" (예: "20260405")
         """
-        cache_key = f"benchmark_{ticker}_{period}"
+        cache_key = f"benchmark_{ticker}_{start_date or 'default'}_{end_date or 'default'}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         try:
-            result = await self._call_vps_tool(
-                "stocks_history",
-                {"stock_code": ticker},
-            )
+            args: Dict[str, Any] = {"stock_code": ticker}
+            if start_date:
+                args["start_date"] = start_date
+            if end_date:
+                args["end_date"] = end_date
+            result = await self._call_vps_tool("stocks_history", args)
             returns = normalize_returns(result)
             if returns:
                 self._set_cached(cache_key, returns)
@@ -396,9 +400,10 @@ class MCPDataProvider:
         return []  # fallback
 
     def get_benchmark_returns_sync(
-        self, ticker: str = "069500", period: str = "1y"
+        self, ticker: str = "069500",
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
     ) -> List[float]:
-        return _run_sync(self.get_benchmark_returns(ticker, period))
+        return _run_sync(self.get_benchmark_returns(ticker, start_date=start_date, end_date=end_date))
 
     # ── 팩터 스코어 (factor_score) ────────────────────────────
 
@@ -446,18 +451,27 @@ class MCPDataProvider:
     # ── 종목 수익률 (stocks_history) ──────────────────────────
 
     async def get_stock_returns(
-        self, ticker: str, period: str = "1y"
+        self, ticker: str,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
     ) -> List[float]:
-        """개별 종목 일간 수익률 조회"""
-        cache_key = f"returns_{ticker}_{period}"
+        """개별 종목 일간 수익률 조회 (기본: 최대 기간)
+
+        Args:
+            start_date: "YYYYMMDD" (기본: "20000101" 최대 기간)
+            end_date: "YYYYMMDD" (기본: 오늘)
+        """
+        cache_key = f"returns_{ticker}_{start_date or 'max'}_{end_date or 'today'}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         try:
-            result = await self._call_vps_tool(
-                "stocks_history", {"stock_code": ticker}
-            )
+            args: Dict[str, Any] = {"stock_code": ticker}
+            if start_date:
+                args["start_date"] = start_date
+            if end_date:
+                args["end_date"] = end_date
+            result = await self._call_vps_tool("stocks_history", args)
             returns = normalize_returns(result)
             if returns:
                 self._set_cached(cache_key, returns)
@@ -467,8 +481,11 @@ class MCPDataProvider:
 
         return []
 
-    def get_stock_returns_sync(self, ticker: str, period: str = "1y") -> List[float]:
-        return _run_sync(self.get_stock_returns(ticker, period))
+    def get_stock_returns_sync(
+        self, ticker: str,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> List[float]:
+        return _run_sync(self.get_stock_returns(ticker, start_date=start_date, end_date=end_date))
 
     # ── BL 최적화 (portadv_black_litterman) ───────────────────
 
