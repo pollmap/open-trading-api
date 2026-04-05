@@ -417,7 +417,7 @@ class MCPDataProvider:
             return cached
 
         try:
-            args: Dict[str, Any] = {"tickers": list(tickers)}
+            args: Dict[str, Any] = {"stocks_data": list(tickers)}
             if factors:
                 args["factors"] = factors
             result = await self._call_vps_tool("factor_score", args)
@@ -519,10 +519,11 @@ class MCPDataProvider:
         try:
             result = await self._call_vps_tool(
                 "dart_financial_ratios",
-                {"ticker": ticker, "report_type": report_type},
+                {"stock_code": ticker},
             )
             if result and result.get("success"):
-                data = result.get("data", result)
+                # DART 응답: {"success": true, "ratios": {...}} or {"data": {...}}
+                data = result.get("ratios", result.get("data", result))
                 self._set_cached(cache_key, data)
                 logger.info("DART 재무비율 %s 조회 성공", ticker)
                 return data
@@ -542,7 +543,7 @@ class MCPDataProvider:
         """GARCH(1,1) 예측 변동성 조회"""
         try:
             result = await self._call_vps_tool(
-                "vol_garch", {"ticker": ticker}
+                "vol_garch", {"stock_code": ticker}
             )
             if result and result.get("success"):
                 data = result.get("data", result)

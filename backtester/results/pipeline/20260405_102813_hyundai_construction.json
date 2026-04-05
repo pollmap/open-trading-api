@@ -1,0 +1,15 @@
+{
+  "ticker": "000720",
+  "name": "현대건설",
+  "risk_free_rate": 0.025,
+  "risk_passed": true,
+  "kelly": 1.0,
+  "annual_cost": 0.039599999999999996,
+  "turb": 0.015902255480916113,
+  "dart_roe": 5.528285011220856,
+  "dart_debt_to_equity": 174.8153762558879,
+  "returns_days": 241,
+  "risk_details": [
+    "ALL PASS"
+  ]
+}
