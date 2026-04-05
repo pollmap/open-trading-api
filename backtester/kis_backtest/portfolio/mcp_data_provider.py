@@ -595,7 +595,6 @@ class MCPDataProvider:
 
     def cache_stats(self) -> Dict[str, Any]:
         """캐시 상태 요약"""
-        now = time.monotonic()
         valid = sum(1 for e in self._cache.values() if e.is_valid)
         expired = len(self._cache) - valid
         return {
@@ -603,6 +602,325 @@ class MCPDataProvider:
             "valid": valid,
             "expired": expired,
         }
+
+    # ══════════════════════════════════════════════════════════════
+    # Phase 7: KIS 백테스트 실행 + 결과 수집
+    # ══════════════════════════════════════════════════════════════
+
+    async def run_backtest(
+        self,
+        strategy_id: str,
+        symbols: List[str],
+        start_date: str = "2025-01-01",
+        end_date: str = "2026-01-01",
+        initial_capital: float = 10_000_000,
+        **kwargs,
+    ) -> Optional[str]:
+        """KIS MCP 백테스트 실행 → job_id 반환
+
+        Returns:
+            job_id 문자열 (폴링용) 또는 None (실패 시)
+        """
+        args = {
+            "strategy_id": strategy_id,
+            "symbols": symbols,
+            "start_date": start_date,
+            "end_date": end_date,
+            "initial_capital": initial_capital,
+            **kwargs,
+        }
+        try:
+            result = await self._call_kis_tool_sse(
+                "run_preset_backtest_tool", args
+            )
+            if result and isinstance(result, dict):
+                # JSON-RPC result → content text → inner JSON
+                inner = self._extract_kis_content(result)
+                if inner and inner.get("success"):
+                    job_id = inner["data"].get("job_id")
+                    logger.info("백테스트 시작: job_id=%s, strategy=%s", job_id, strategy_id)
+                    return job_id
+        except Exception as e:
+            logger.warning("백테스트 실행 실패: %s", e)
+        return None
+
+    async def poll_backtest_result(
+        self,
+        job_id: str,
+        timeout: int = 300,
+        interval: int = 5,
+    ) -> Dict[str, Any]:
+        """job_id 폴링 → completed/failed까지 대기 → 결과 반환
+
+        Args:
+            job_id: run_backtest에서 받은 ID
+            timeout: 최대 대기 시간 (초)
+            interval: 폴링 간격 (초)
+
+        Returns:
+            완료 시: {"status": "completed", "result": {metrics, equity_curve, ...}}
+            실패 시: {"status": "failed", "error": "..."}
+            타임아웃 시: {"status": "timeout"}
+        """
+        import asyncio as _asyncio
+
+        elapsed = 0
+        while elapsed < timeout:
+            try:
+                result = await self._call_kis_tool_sse(
+                    "get_backtest_result_tool", {"job_id": job_id}
+                )
+                inner = self._extract_kis_content(result)
+                if inner:
+                    status = inner.get("data", {}).get("status", "")
+                    if status == "completed":
+                        logger.info("백테스트 완료: job_id=%s", job_id)
+                        return inner.get("data", {})
+                    if status == "failed":
+                        logger.warning("백테스트 실패: %s", inner.get("error", ""))
+                        return {"status": "failed", "error": inner.get("error", "")}
+            except Exception as e:
+                logger.warning("폴링 에러: %s", e)
+
+            await _asyncio.sleep(interval)
+            elapsed += interval
+
+        return {"status": "timeout"}
+
+    async def run_and_wait_backtest(
+        self,
+        strategy_id: str,
+        symbols: List[str],
+        start_date: str = "2025-01-01",
+        end_date: str = "2026-01-01",
+        initial_capital: float = 10_000_000,
+        timeout: int = 300,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """실행 + 폴링 + 결과 한 번에 (편의 메서드)"""
+        job_id = await self.run_backtest(
+            strategy_id, symbols, start_date, end_date, initial_capital, **kwargs
+        )
+        if not job_id:
+            return {"status": "failed", "error": "job_id 미수신"}
+        return await self.poll_backtest_result(job_id, timeout=timeout)
+
+    def run_and_wait_backtest_sync(self, **kwargs) -> Dict[str, Any]:
+        return _run_sync(self.run_and_wait_backtest(**kwargs))
+
+    # ── KIS SSE 호출 헬퍼 ─────────────────────────────────────
+
+    async def _call_kis_tool_sse(
+        self, tool_name: str, arguments: Optional[Dict] = None
+    ) -> Optional[Dict]:
+        """KIS Backtest MCP 도구 호출 (Streamable HTTP SSE)"""
+        payload = {
+            "jsonrpc": "2.0",
+            "method": "tools/call",
+            "params": {"name": tool_name, "arguments": arguments or {}},
+            "id": 1,
+        }
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
+        return await self._post_mcp_sse(self._kis_mcp_url, payload, headers)
+
+    @staticmethod
+    def _extract_kis_content(result: Optional[Dict]) -> Optional[Dict]:
+        """KIS MCP JSON-RPC 응답에서 content text → inner JSON 추출"""
+        if not result or not isinstance(result, dict):
+            return None
+        content_list = result.get("result", {}).get("content", [])
+        for item in content_list:
+            if item.get("type") == "text":
+                try:
+                    return _json.loads(item["text"])
+                except (_json.JSONDecodeError, KeyError):
+                    pass
+        return None
+
+    # ══════════════════════════════════════════════════════════════
+    # Phase 8: 마이크로구조 + 알파 품질 + 실행 최적화
+    # ══════════════════════════════════════════════════════════════
+
+    async def get_micro_toxicity(self, ticker: str) -> Dict[str, Any]:
+        """VPIN (Volume-Synchronized Probability of Informed Trading)
+
+        Returns:
+            {"vpin": 0.45, "flash_crash_risk": "WARNING", ...} 또는 {}
+        """
+        cache_key = f"micro_toxicity_{ticker}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool("micro_toxicity", {"stock_code": ticker})
+            if result and result.get("success"):
+                data = result.get("data", result)
+                self._set_cached(cache_key, data, ttl=600)  # 10분 캐시
+                return data
+        except Exception as e:
+            logger.debug("VPIN 조회 실패 (%s): %s", ticker, e)
+        return {}
+
+    def get_micro_toxicity_sync(self, ticker: str) -> Dict[str, Any]:
+        return _run_sync(self.get_micro_toxicity(ticker))
+
+    async def get_micro_amihud(self, ticker: str) -> Optional[float]:
+        """Amihud 비유동성 지표 (높을수록 비유동적)"""
+        cache_key = f"micro_amihud_{ticker}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool("micro_amihud", {"stock_code": ticker})
+            if result and result.get("success"):
+                val = result.get("data", {}).get("amihud_illiquidity")
+                if val is not None:
+                    val = float(val)
+                    self._set_cached(cache_key, val)
+                    return val
+        except Exception as e:
+            logger.debug("Amihud 조회 실패 (%s): %s", ticker, e)
+        return None
+
+    def get_micro_amihud_sync(self, ticker: str) -> Optional[float]:
+        return _run_sync(self.get_micro_amihud(ticker))
+
+    async def get_micro_kyle_lambda(self, ticker: str) -> Optional[float]:
+        """Kyle Lambda: 가격 임팩트 (bps per million won)"""
+        cache_key = f"micro_kyle_{ticker}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool("micro_kyle_lambda", {"stock_code": ticker})
+            if result and result.get("success"):
+                val = result.get("data", {}).get("kyle_lambda")
+                if val is not None:
+                    val = float(val)
+                    self._set_cached(cache_key, val)
+                    return val
+        except Exception as e:
+            logger.debug("Kyle Lambda 조회 실패 (%s): %s", ticker, e)
+        return None
+
+    def get_micro_kyle_lambda_sync(self, ticker: str) -> Optional[float]:
+        return _run_sync(self.get_micro_kyle_lambda(ticker))
+
+    async def get_alpha_decay(self, ticker: str) -> Dict[str, Any]:
+        """알파 반감기 (IC half-life, crowding)"""
+        cache_key = f"alpha_decay_{ticker}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool("alpha_decay", {"stock_code": ticker})
+            if result and result.get("success"):
+                data = result.get("data", result)
+                self._set_cached(cache_key, data, ttl=7200)  # 2시간 캐시
+                return data
+        except Exception as e:
+            logger.debug("Alpha Decay 조회 실패 (%s): %s", ticker, e)
+        return {}
+
+    def get_alpha_decay_sync(self, ticker: str) -> Dict[str, Any]:
+        return _run_sync(self.get_alpha_decay(ticker))
+
+    async def get_alpha_crowding(self, tickers: Sequence[str]) -> Dict[str, float]:
+        """팩터 혼잡도 (종목별 crowding percentile)"""
+        cache_key = f"alpha_crowding_{','.join(sorted(tickers)[:5])}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool(
+                "alpha_crowding", {"tickers": list(tickers)}
+            )
+            if result and result.get("success"):
+                data = result.get("data", {})
+                if isinstance(data, dict):
+                    self._set_cached(cache_key, data)
+                    return data
+        except Exception as e:
+            logger.debug("Alpha Crowding 조회 실패: %s", e)
+        return {}
+
+    def get_alpha_crowding_sync(self, tickers: Sequence[str]) -> Dict[str, float]:
+        return _run_sync(self.get_alpha_crowding(tickers))
+
+    async def get_exec_optimal(
+        self,
+        ticker: str,
+        order_size_millions: float,
+        time_horizon_hours: int = 4,
+    ) -> Dict[str, Any]:
+        """Almgren-Chriss 최적 실행 경로"""
+        cache_key = f"exec_optimal_{ticker}_{order_size_millions}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool(
+                "stochvol_exec_optimal",
+                {
+                    "stock_code": ticker,
+                    "order_size_millions": order_size_millions,
+                    "time_horizon_hours": time_horizon_hours,
+                },
+            )
+            if result and result.get("success"):
+                data = result.get("data", result)
+                self._set_cached(cache_key, data, ttl=300)  # 5분 캐시
+                return data
+        except Exception as e:
+            logger.debug("Almgren-Chriss 조회 실패 (%s): %s", ticker, e)
+        return {}
+
+    def get_exec_optimal_sync(
+        self, ticker: str, order_size_millions: float, time_horizon_hours: int = 4
+    ) -> Dict[str, Any]:
+        return _run_sync(
+            self.get_exec_optimal(ticker, order_size_millions, time_horizon_hours)
+        )
+
+    # ══════════════════════════════════════════════════════════════
+    # 업그레이드: 결과 자동 저장 (Karpathy 누적 학습 루프)
+    # ══════════════════════════════════════════════════════════════
+
+    def save_result(
+        self,
+        result: Dict[str, Any],
+        category: str = "backtest",
+        tag: str = "",
+    ) -> Path:
+        """분석/백테스트 결과를 JSON으로 자동 저장
+
+        저장 경로: {project_root}/results/{category}/{date}_{tag}.json
+        Vault 연동 시 이 파일을 자동으로 인덱싱할 수 있음.
+        """
+        from datetime import datetime
+
+        results_dir = Path.home() / "Desktop" / "open-trading-api" / "backtester" / "results" / category
+        results_dir.mkdir(parents=True, exist_ok=True)
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{timestamp}_{tag}.json" if tag else f"{timestamp}.json"
+        filepath = results_dir / filename
+
+        filepath.write_text(
+            _json.dumps(result, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+        logger.info("결과 저장: %s", filepath)
+        return filepath
 
 
 # ── 동기 실행 헬퍼 ────────────────────────────────────────────

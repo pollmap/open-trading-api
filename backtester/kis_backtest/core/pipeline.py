@@ -272,6 +272,25 @@ class QuantPipeline:
         if turb > 5.0:
             risk_details.append(f"TURB WARNING: 터뷸런스 {turb:.1f}x (>5x, 위기 수준)")
 
+        # 2a-1. VPIN 마이크로구조 체크 (MCP 있을 때만, 선택적)
+        if self.mcp and factor_scores:
+            for ticker in list(factor_scores.keys())[:5]:  # 상위 5종목만
+                try:
+                    toxicity = self.mcp.get_micro_toxicity_sync(ticker)
+                    vpin = toxicity.get("vpin", 0) if toxicity else 0
+                    if vpin > 0.7:
+                        name = factor_scores.get(ticker, {}).get("name", ticker)
+                        risk_details.append(
+                            f"VPIN CRITICAL: {name} VPIN={vpin:.2f} (>0.7, 플래시크래시 위험)"
+                        )
+                    elif vpin > 0.5:
+                        name = factor_scores.get(ticker, {}).get("name", ticker)
+                        risk_details.append(
+                            f"VPIN WARNING: {name} VPIN={vpin:.2f} (>0.5, 유동성 주의)"
+                        )
+                except Exception:
+                    pass  # MCP 실패 시 무시 — 기존 로직 유지
+
         # 2b. 상관관계 모니터
         if returns_dict and len([t for t in returns_dict if len(returns_dict[t]) >= 30]) >= 2:
             corr_alert = self.corr_monitor.check(returns_dict)
@@ -289,6 +308,19 @@ class QuantPipeline:
                 # DD 발생 시 전 비중 축소
                 for ticker in adjusted_weights:
                     adjusted_weights[ticker] *= state.reduction_factor
+
+        # 3b. 알파 혼잡도 체크 (MCP 있을 때만, 선택적)
+        if self.mcp and factor_scores:
+            try:
+                crowding = self.mcp.get_alpha_crowding_sync(list(factor_scores.keys()))
+                for ticker, pct in crowding.items():
+                    if pct > 0.8:
+                        name = factor_scores.get(ticker, {}).get("name", ticker)
+                        risk_details.append(
+                            f"CROWDING: {name} 혼잡도 {pct:.0%} (>80%, 팩터 과밀 위험)"
+                        )
+            except Exception:
+                pass  # MCP 실패 시 무시
 
         # 4. After-cost Kelly 체크 — 실제 데이터에서 mu/sigma 계산 (가정값 금지)
         freq_to_rt = {"weekly": 50, "biweekly": 24, "monthly": 12, "quarterly": 4}
