@@ -487,11 +487,69 @@ class MCPDataProvider:
     ) -> List[float]:
         return _run_sync(self.get_stock_returns(ticker, start_date=start_date, end_date=end_date))
 
+    # ── 가격 시계열 조회 (BL/HRP용 원본 가격) ─────────────────
+
+    async def get_stock_prices(
+        self, ticker: str,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """개별 종목 가격 시계열 조회 — BL/HRP 입력용 원본 데이터
+
+        Returns: [{"date": "2025-01-02", "close": 171200, ...}, ...]
+        """
+        cache_key = f"prices_{ticker}_{start_date or 'max'}_{end_date or 'today'}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            args: Dict[str, Any] = {"stock_code": ticker}
+            if start_date:
+                args["start_date"] = start_date
+            if end_date:
+                args["end_date"] = end_date
+            result = await self._call_vps_tool("stocks_history", args)
+
+            if not result or not result.get("success"):
+                return []
+
+            data = result.get("data", [])
+            if isinstance(data, list) and data:
+                self._set_cached(cache_key, data)
+                return data
+        except Exception as e:
+            logger.warning("가격 시계열 %s 조회 실패: %s", ticker, e)
+        return []
+
+    def get_stock_prices_sync(
+        self, ticker: str,
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        return _run_sync(self.get_stock_prices(ticker, start_date, end_date))
+
+    async def get_prices_dict(
+        self, tickers: Sequence[str],
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        """여러 종목 가격 시계열을 순차 조회 — BL/HRP series_list 입력용"""
+        result = {}
+        for ticker in tickers:
+            prices = await self.get_stock_prices(ticker, start_date, end_date)
+            if prices:
+                result[ticker] = prices
+        return result
+
+    def get_prices_dict_sync(
+        self, tickers: Sequence[str],
+        start_date: Optional[str] = None, end_date: Optional[str] = None,
+    ) -> Dict[str, List[Dict[str, Any]]]:
+        return _run_sync(self.get_prices_dict(tickers, start_date, end_date))
+
     # ── BL 최적화 (portadv_black_litterman) ───────────────────
 
     async def get_bl_weights(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
         views: Optional[List[Dict[str, Any]]] = None,
         market_caps: Optional[Dict[str, float]] = None,
         tau: float = 0.05,
@@ -499,31 +557,33 @@ class MCPDataProvider:
     ) -> Dict[str, float]:
         """Black-Litterman 최적 비중 조회
 
-        MCP portadv_black_litterman 필수 파라미터: series_list, names.
-        returns_dict에서 자동 변환.
+        MCP portadv_black_litterman 필수 파라미터: series_list(가격 시계열), names.
 
         Args:
-            returns_dict: {ticker: [daily_returns]} — 필수
+            prices_dict: {ticker: [{"date": "...", "close": N}, ...]} — 가격 원본
+                         또는 {ticker: [float, ...]} — 수익률 배열 (하위 호환)
             views: BL 투자자 뷰 (factor_to_views 출력)
             market_caps: {ticker: 시가총액} — 균형 비중용
             tau: 불확실성 스케일 (기본 0.05)
             risk_free_rate: 무위험 이자율
         """
-        cache_key = f"bl_{hash(str(sorted(returns_dict.keys())))}"
+        cache_key = f"bl_{hash(str(sorted(prices_dict.keys())))}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         try:
-            tickers = list(returns_dict.keys())
-            # 수익률 길이 정렬 (최소 공통 길이)
-            min_len = min(len(returns_dict[t]) for t in tickers) if tickers else 0
-            if min_len < 30:
-                logger.warning("BL: 수익률 데이터 부족 (%d일)", min_len)
+            tickers = list(prices_dict.keys())
+            if not tickers:
+                return {}
+
+            # series_list 구성: 가격 dict 또는 float 배열 모두 지원
+            series_list = self._prepare_series_list(prices_dict, tickers)
+            if not series_list:
                 return {}
 
             args: Dict[str, Any] = {
-                "series_list": [returns_dict[t][-min_len:] for t in tickers],
+                "series_list": series_list,
                 "names": tickers,
                 "tau": tau,
             }
@@ -547,46 +607,49 @@ class MCPDataProvider:
 
     def get_bl_weights_sync(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
         views: Optional[List[Dict[str, Any]]] = None,
         market_caps: Optional[Dict[str, float]] = None,
         tau: float = 0.05,
         risk_free_rate: Optional[float] = None,
     ) -> Dict[str, float]:
-        return _run_sync(self.get_bl_weights(returns_dict, views, market_caps, tau, risk_free_rate))
+        return _run_sync(self.get_bl_weights(prices_dict, views, market_caps, tau, risk_free_rate))
 
     # ── HRP 최적화 (portadv_hrp) ─────────────────────────────
 
     async def get_hrp_weights(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
     ) -> Dict[str, float]:
         """Hierarchical Risk Parity 최적 비중 (López de Prado)
 
         MCP portadv_hrp: 공분산 역행렬 없는 트리 기반 배분.
-        series_list, names 필수.
+        series_list(가격 시계열), names 필수.
 
         Args:
-            returns_dict: {ticker: [daily_returns]} — 모든 시리즈 동일 길이 권장
+            prices_dict: {ticker: [{"date": "...", "close": N}, ...]} — 가격 원본
+                         또는 {ticker: [float, ...]} — 수익률 배열 (하위 호환)
         """
-        cache_key = f"hrp_{hash(str(sorted(returns_dict.keys())))}"
+        cache_key = f"hrp_{hash(str(sorted(prices_dict.keys())))}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         try:
-            tickers = list(returns_dict.keys())
-            min_len = min(len(returns_dict[t]) for t in tickers) if tickers else 0
-            if min_len < 30:
-                logger.warning("HRP: 수익률 데이터 부족 (%d일)", min_len)
+            tickers = list(prices_dict.keys())
+            if not tickers:
+                return {}
+
+            series_list = self._prepare_series_list(prices_dict, tickers)
+            if not series_list:
                 return {}
 
             args = {
-                "series_list": [returns_dict[t][-min_len:] for t in tickers],
+                "series_list": series_list,
                 "names": tickers,
             }
             result = await self._call_vps_tool("portadv_hrp", args)
-            weights = normalize_bl_weights(result)  # BL과 동일한 {ticker: weight} 형식
+            weights = normalize_bl_weights(result)
             if weights:
                 self._set_cached(cache_key, weights)
                 logger.info("HRP 최적화 %d종목 완료", len(weights))
@@ -598,9 +661,48 @@ class MCPDataProvider:
 
     def get_hrp_weights_sync(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
     ) -> Dict[str, float]:
-        return _run_sync(self.get_hrp_weights(returns_dict))
+        return _run_sync(self.get_hrp_weights(prices_dict))
+
+    @staticmethod
+    def _prepare_series_list(
+        data_dict: Dict[str, List[Any]], tickers: List[str],
+    ) -> Optional[List[List]]:
+        """prices_dict → MCP series_list 변환
+
+        가격 원본([{date, close}]) 그대로 전달하거나,
+        수익률 배열([float])이면 그대로 전달.
+        """
+        if not tickers or not data_dict:
+            return None
+
+        sample = data_dict[tickers[0]]
+        if not sample:
+            return None
+
+        # [{date, close, ...}] 형태 → {date, value} 형식으로 변환 (MCP 요구사항)
+        if isinstance(sample[0], dict):
+            min_len = min(len(data_dict[t]) for t in tickers)
+            if min_len < 30:
+                logger.warning("시계열 데이터 부족 (%d일)", min_len)
+                return None
+            return [
+                [
+                    {"date": p["date"], "value": p.get("close", p.get("value", 0))}
+                    for p in data_dict[t][-min_len:]
+                ]
+                for t in tickers
+            ]
+
+        # [float] 형태 → 그대로 전달 (하위 호환)
+        if isinstance(sample[0], (int, float)):
+            min_len = min(len(data_dict[t]) for t in tickers)
+            if min_len < 30:
+                return None
+            return [data_dict[t][-min_len:] for t in tickers]
+
+        return None
 
     # ── DART 재무비율 ─────────────────────────────────────────
 

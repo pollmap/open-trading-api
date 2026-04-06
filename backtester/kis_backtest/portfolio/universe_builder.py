@@ -32,10 +32,16 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SectorDef:
-    """섹터 정의"""
+    """섹터 정의
+
+    candidates: 미리 지정된 후보 종목 {ticker: name}.
+                stocks_search가 안 되는 종목을 직접 지정할 때 사용.
+                지정하면 MCP 검색 건너뛰고 바로 DART 스크리닝으로.
+    """
     name: str
     keywords: List[str]
     top_n: int = 2
+    candidates: Optional[Dict[str, str]] = None  # {ticker: name}
 
 
 @dataclass
@@ -87,13 +93,27 @@ class UniverseResult:
 
 
 # 기본 섹터 정의 (6섹터)
+# candidates: stocks_search 커버리지가 불완전하므로 후보 종목 직접 지정
+# 이전 세션에서 MCP stocks_search + dart_financial_ratios로 확정한 종목
 DEFAULT_SECTORS = [
-    SectorDef("건설", ["건설"]),
-    SectorDef("반도체", ["반도체"]),
-    SectorDef("우주", ["우주항공", "에어로스페이스"]),
-    SectorDef("방산", ["방산", "국방"]),
-    SectorDef("조선", ["조선"]),
-    SectorDef("로봇", ["로봇"]),
+    SectorDef("건설", ["건설", "삼성물산"], candidates={
+        "028260": "삼성물산", "000720": "현대건설", "000210": "DL",
+    }),
+    SectorDef("반도체", ["삼성전자", "SK하이닉스"], candidates={
+        "000660": "SK하이닉스", "058470": "리노공업", "005930": "삼성전자",
+    }),
+    SectorDef("우주", ["한화에어로"], candidates={
+        "012450": "한화에어로스페이스", "099320": "쎄트렉아이", "047810": "한국항공우주",
+    }),
+    SectorDef("방산", ["한화에어로", "현대로템"], candidates={
+        "064350": "현대로템", "079550": "LIG넥스원", "012450": "한화에어로스페이스",
+    }),
+    SectorDef("조선", ["HD한국조선", "삼성중공"], candidates={
+        "009540": "HD한국조선해양", "010140": "삼성중공업", "329180": "HD현대중공업",
+    }),
+    SectorDef("로봇", ["로봇"], candidates={
+        "090460": "로보스타", "277810": "레인보우로보틱스", "454910": "두산로보틱스",
+    }),
 ]
 
 # 기본 ETF 헤지 자산
@@ -179,15 +199,22 @@ class UniverseBuilder:
         )
 
     async def _select_sector(self, sector: SectorDef) -> List[StockInfo]:
-        """단일 섹터 종목 선별: 검색 → 재무 스크리닝 → top N"""
-        # 1. 키워드별 종목 검색
+        """단일 섹터 종목 선별: 후보지정/검색 → 재무 스크리닝 → top N"""
+        # 1. 후보 종목: candidates 직접 지정 우선, 없으면 MCP 검색
         candidates: Dict[str, Dict[str, str]] = {}
-        for kw in sector.keywords:
-            results = await self._mcp.search_stocks(kw)
-            for item in results[:self._max_candidates]:
-                ticker = item.get("ticker", "")
-                if ticker and ticker not in candidates:
-                    candidates[ticker] = item
+
+        if sector.candidates:
+            # 직접 지정된 후보 사용 (stocks_search 커버리지 불완전 대응)
+            for ticker, name in sector.candidates.items():
+                candidates[ticker] = {"ticker": ticker, "name": name, "market": ""}
+        else:
+            # MCP stocks_search 키워드 검색
+            for kw in sector.keywords:
+                results = await self._mcp.search_stocks(kw)
+                for item in results[:self._max_candidates]:
+                    ticker = item.get("ticker", "")
+                    if ticker and ticker not in candidates:
+                        candidates[ticker] = item
 
         if not candidates:
             logger.warning("섹터 %s: 후보 종목 없음 (키워드: %s)", sector.name, sector.keywords)
@@ -199,7 +226,7 @@ class UniverseBuilder:
             try:
                 financials = await self._mcp.get_dart_financials(ticker)
                 roe = _extract_float(financials, "roe", "return_on_equity")
-                opm = _extract_float(financials, "opm", "operating_profit_margin")
+                opm = _extract_float(financials, "opm", "operating_margin", "operating_profit_margin")
                 dte = _extract_float(financials, "dte", "debt_to_equity", "debt_ratio")
 
                 score = _compute_screening_score(roe, opm, dte)
