@@ -23,6 +23,7 @@ from .mcp_bridge import MCPBridge, PortfolioOrder, StockAllocation, OrderAction
 from .mcp_data_provider import MCPDataProvider
 from .cufa_bridge import CUFABridge
 from .review_engine import ReviewEngine, WeeklyReport, TradeRecord, KillCondition
+from .universe_builder import UniverseBuilder, UniverseResult, SectorDef
 
 __all__ = [
     "PortfolioAnalyzer",
@@ -40,4 +41,7 @@ __all__ = [
     "WeeklyReport",
     "TradeRecord",
     "KillCondition",
+    "UniverseBuilder",
+    "UniverseResult",
+    "SectorDef",
 ]

@@ -137,7 +137,7 @@ class TestLiveMCPData:
     @skip_no_vps
     def test_benchmark_returns_real(self, provider):
         """KODEX200 ETF 수익률 실데이터"""
-        returns = provider.get_benchmark_returns_sync(ticker="069500", period="3m")
+        returns = provider.get_benchmark_returns_sync(ticker="069500")
         print(f"\n  KODEX200 수익률: {len(returns)}일")
         if returns:
             assert len(returns) >= 30, f"3개월인데 {len(returns)}일만 수신"
@@ -155,7 +155,7 @@ class TestLiveMCPData:
     @skip_no_vps
     def test_stock_returns_samsung(self, provider):
         """삼성전자 일간 수익률 1년"""
-        returns = provider.get_stock_returns_sync("005930", period="1y")
+        returns = provider.get_stock_returns_sync("005930")
         print(f"\n  삼성전자 수익률: {len(returns)}일")
         if returns:
             assert len(returns) >= 200

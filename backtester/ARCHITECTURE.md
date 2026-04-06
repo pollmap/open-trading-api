@@ -1,6 +1,6 @@
 # Luxon AI Quant System — Architecture & Design
 
-> **버전**: v0.1α | **테스트**: 53/53 PASS | **도구**: MCP 364개 | **GitHub**: pollmap/open-trading-api
+> **버전**: v0.2α | **테스트**: 179/179 PASS | **도구**: MCP 364개 | **GitHub**: pollmap/open-trading-api
 
 ---
 
@@ -72,6 +72,16 @@
 │ + viz(33) + val(10) + 뉴스(26)  │                               │
 │                                  │                               │
 ├──────────────────────────────────┴──────────────────────────────┤
+│ L3.5: 오케스트레이션 (v0.2α 신규)                               │
+│                                                                  │
+│ UniverseBuilder        — 6섹터 자동 종목 선별 (stocks_search     │
+│   (universe_builder.py)  + dart_financial_ratios → ROE/OPM/DTE)  │
+│                                                                  │
+│ StrategyComparison     — N개 전략 동일 유니버스 백테스트 비교    │
+│   (strategy_comparison   + BL/HRP 포트폴리오 최적화 비교         │
+│    .py)                  + Sharpe/MDD 기준 랭킹 테이블           │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
 │ L3: 분석 엔진 (MCP 도구 조합)                                   │
 │                                                                  │
 │ factor_score()           — 팩터 스코어링 (momentum+value+...)    │
@@ -480,12 +490,31 @@ print(result.order.summary())
 
 | 단계 | 작업 | 상태 |
 |------|------|------|
-| v0.1α | 리스크 모듈 + 파이프라인 + 테스트 | ✅ 완료 |
+| v0.1α | 리스크 모듈 + 파이프라인 + 테스트 53개 | ✅ 완료 |
+| v0.1β | MCP 실연동 + 현대건설 E2E + 134 tests | ✅ 완료 |
+| v0.2α | UniverseBuilder + StrategyComparison + BL/HRP + 179 tests | ✅ 완료 |
 | v0.2 | KIS 모의투자 실 주문 + 첫 복기 | 다음 |
 | v0.3 | CUFA 보고서 ↔ 퀀트 Kill Condition 자동 연동 | 예정 |
 | v0.4 | 크립토 펀딩레이트 차익 전략 추가 | 예정 |
 | v1.0 | 4주 모의투자 검증 완료 → 소액 실전 진입 | 목표 |
 
+### v0.2α 변경사항
+
+**Bug Fix:**
+- `get_returns_dict()`: period 파라미터 버그 수정 → start_date/end_date + 병렬 Semaphore
+- `get_bl_weights()`: MCP 필수 파라미터(series_list, names) 추가 + 시그니처 개선
+
+**신규 모듈:**
+- `UniverseBuilder` (portfolio/universe_builder.py): 6섹터 자동 종목 선별
+  - stocks_search MCP → DART 재무비율 스크리닝 → ROE/OPM/DTE 점수
+- `StrategyComparison` (core/strategy_comparison.py): 멀티 전략 비교 러너
+  - N개 전략 동일 유니버스 백테스트 → Sharpe/MDD 랭킹
+  - BL/HRP 포트폴리오 최적화 비교 + 자동 추천
+
+**신규 MCP 래퍼:**
+- `get_hrp_weights()`: portadv_hrp MCP 도구 (López de Prado HRP)
+- `search_stocks()`: stocks_search MCP 도구 (한국어 종목 검색)
+
 ---
 
-*Luxon AI Quant System v0.1α | 53 tests | MCP 364 tools | pollmap/open-trading-api*
+*Luxon AI Quant System v0.2α | 179 tests | MCP 364 tools | pollmap/open-trading-api*

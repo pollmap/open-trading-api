@@ -14,7 +14,7 @@ Usage:
 
     # 동기 호출
     rate = provider.get_risk_free_rate_sync()
-    returns = provider.get_benchmark_returns_sync(period="1y")
+    returns = provider.get_benchmark_returns_sync(start_date="20250101")
 
     # 비동기 호출
     rate = await provider.get_risk_free_rate()
@@ -491,20 +491,49 @@ class MCPDataProvider:
 
     async def get_bl_weights(
         self,
-        views: List[Dict[str, Any]],
-        market_cap_weights: Optional[Dict[str, float]] = None,
+        returns_dict: Dict[str, List[float]],
+        views: Optional[List[Dict[str, Any]]] = None,
+        market_caps: Optional[Dict[str, float]] = None,
         tau: float = 0.05,
+        risk_free_rate: Optional[float] = None,
     ) -> Dict[str, float]:
-        """Black-Litterman 최적 비중 조회"""
-        cache_key = f"bl_{hash(str(views))}"
+        """Black-Litterman 최적 비중 조회
+
+        MCP portadv_black_litterman 필수 파라미터: series_list, names.
+        returns_dict에서 자동 변환.
+
+        Args:
+            returns_dict: {ticker: [daily_returns]} — 필수
+            views: BL 투자자 뷰 (factor_to_views 출력)
+            market_caps: {ticker: 시가총액} — 균형 비중용
+            tau: 불확실성 스케일 (기본 0.05)
+            risk_free_rate: 무위험 이자율
+        """
+        cache_key = f"bl_{hash(str(sorted(returns_dict.keys())))}"
         cached = self._get_cached(cache_key)
         if cached is not None:
             return cached
 
         try:
-            args: Dict[str, Any] = {"views": views, "tau": tau}
-            if market_cap_weights:
-                args["market_cap_weights"] = market_cap_weights
+            tickers = list(returns_dict.keys())
+            # 수익률 길이 정렬 (최소 공통 길이)
+            min_len = min(len(returns_dict[t]) for t in tickers) if tickers else 0
+            if min_len < 30:
+                logger.warning("BL: 수익률 데이터 부족 (%d일)", min_len)
+                return {}
+
+            args: Dict[str, Any] = {
+                "series_list": [returns_dict[t][-min_len:] for t in tickers],
+                "names": tickers,
+                "tau": tau,
+            }
+            if views:
+                args["views"] = views
+            if market_caps:
+                args["market_caps"] = [market_caps.get(t, 0) for t in tickers]
+            if risk_free_rate is not None:
+                args["risk_free_rate"] = risk_free_rate
+
             result = await self._call_vps_tool("portadv_black_litterman", args)
             weights = normalize_bl_weights(result)
             if weights:
@@ -518,11 +547,60 @@ class MCPDataProvider:
 
     def get_bl_weights_sync(
         self,
-        views: List[Dict[str, Any]],
-        market_cap_weights: Optional[Dict[str, float]] = None,
+        returns_dict: Dict[str, List[float]],
+        views: Optional[List[Dict[str, Any]]] = None,
+        market_caps: Optional[Dict[str, float]] = None,
         tau: float = 0.05,
+        risk_free_rate: Optional[float] = None,
     ) -> Dict[str, float]:
-        return _run_sync(self.get_bl_weights(views, market_cap_weights, tau))
+        return _run_sync(self.get_bl_weights(returns_dict, views, market_caps, tau, risk_free_rate))
+
+    # ── HRP 최적화 (portadv_hrp) ─────────────────────────────
+
+    async def get_hrp_weights(
+        self,
+        returns_dict: Dict[str, List[float]],
+    ) -> Dict[str, float]:
+        """Hierarchical Risk Parity 최적 비중 (López de Prado)
+
+        MCP portadv_hrp: 공분산 역행렬 없는 트리 기반 배분.
+        series_list, names 필수.
+
+        Args:
+            returns_dict: {ticker: [daily_returns]} — 모든 시리즈 동일 길이 권장
+        """
+        cache_key = f"hrp_{hash(str(sorted(returns_dict.keys())))}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            tickers = list(returns_dict.keys())
+            min_len = min(len(returns_dict[t]) for t in tickers) if tickers else 0
+            if min_len < 30:
+                logger.warning("HRP: 수익률 데이터 부족 (%d일)", min_len)
+                return {}
+
+            args = {
+                "series_list": [returns_dict[t][-min_len:] for t in tickers],
+                "names": tickers,
+            }
+            result = await self._call_vps_tool("portadv_hrp", args)
+            weights = normalize_bl_weights(result)  # BL과 동일한 {ticker: weight} 형식
+            if weights:
+                self._set_cached(cache_key, weights)
+                logger.info("HRP 최적화 %d종목 완료", len(weights))
+                return weights
+        except Exception as e:
+            logger.warning("HRP 최적화 실패: %s", e)
+
+        return {}
+
+    def get_hrp_weights_sync(
+        self,
+        returns_dict: Dict[str, List[float]],
+    ) -> Dict[str, float]:
+        return _run_sync(self.get_hrp_weights(returns_dict))
 
     # ── DART 재무비율 ─────────────────────────────────────────
 
@@ -561,6 +639,64 @@ class MCPDataProvider:
     ) -> Dict[str, Any]:
         return _run_sync(self.get_dart_financials(ticker, report_type))
 
+    # ── 종목 검색 (stocks_search) ─────────────────────────────
+
+    async def search_stocks(self, keyword: str) -> List[Dict[str, str]]:
+        """종목 검색 — stocks_search MCP 도구
+
+        Args:
+            keyword: 검색어 (한국어 회사명 또는 코드, 예: "건설", "반도체", "005930")
+
+        Returns:
+            [{"ticker": "005930", "name": "삼성전자", ...}, ...]
+        """
+        cache_key = f"search_{keyword}"
+        cached = self._get_cached(cache_key)
+        if cached is not None:
+            return cached
+
+        try:
+            result = await self._call_vps_tool("stocks_search", {"keyword": keyword})
+            stocks = self._parse_search_result(result)
+            if stocks:
+                self._set_cached(cache_key, stocks, ttl=86400)  # 24시간 캐시
+                logger.info("종목 검색 '%s': %d건", keyword, len(stocks))
+                return stocks
+        except Exception as e:
+            logger.warning("종목 검색 '%s' 실패: %s", keyword, e)
+
+        return []
+
+    @staticmethod
+    def _parse_search_result(result: Dict[str, Any]) -> List[Dict[str, str]]:
+        """stocks_search 결과를 [{ticker, name, ...}] 리스트로 파싱"""
+        if not result:
+            return []
+
+        data = result.get("data", result)
+
+        # list of dicts
+        if isinstance(data, list):
+            return [
+                {
+                    "ticker": item.get("ticker", item.get("stock_code", item.get("code", ""))),
+                    "name": item.get("name", item.get("stock_name", "")),
+                    "market": item.get("market", ""),
+                }
+                for item in data
+                if item.get("ticker") or item.get("stock_code") or item.get("code")
+            ]
+
+        # dict with items
+        if isinstance(data, dict) and "items" in data:
+            return MCPDataProvider._parse_search_result({"data": data["items"]})
+
+        # 텍스트 결과 (비구조화) — 빈 리스트 반환
+        return []
+
+    def search_stocks_sync(self, keyword: str) -> List[Dict[str, str]]:
+        return _run_sync(self.search_stocks(keyword))
+
     # ── GARCH 변동성 ──────────────────────────────────────────
 
     async def get_garch_vol(self, ticker: str) -> Optional[float]:
@@ -585,30 +721,44 @@ class MCPDataProvider:
     # ── 다중 종목 수익률 일괄 조회 ────────────────────────────
 
     async def get_returns_dict(
-        self, tickers: Sequence[str], period: str = "1y"
+        self,
+        tickers: Sequence[str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        max_concurrent: int = 5,
     ) -> Dict[str, List[float]]:
-        """여러 종목 수익률을 병렬로 조회하여 {ticker: [returns]} dict 반환"""
-        import asyncio
+        """여러 종목 수익률을 병렬로 조회하여 {ticker: [returns]} dict 반환
 
-        tasks = {
-            ticker: self.get_stock_returns(ticker, period)
-            for ticker in tickers
-        }
-        results = {}
-        for ticker, coro in tasks.items():
-            try:
-                returns = await coro
-                if returns:
-                    results[ticker] = returns
-            except Exception as e:
-                logger.warning("종목 %s 수익률 조회 실패: %s", ticker, e)
+        Args:
+            tickers: 종목코드 리스트
+            start_date: "YYYYMMDD" (예: "20210101")
+            end_date: "YYYYMMDD" (예: "20260405")
+            max_concurrent: 동시 MCP 호출 수 (rate limit 방지)
+        """
+        sem = asyncio.Semaphore(max_concurrent)
 
-        return results
+        async def _fetch(ticker: str) -> tuple:
+            async with sem:
+                try:
+                    returns = await self.get_stock_returns(
+                        ticker, start_date=start_date, end_date=end_date,
+                    )
+                    return ticker, returns
+                except Exception as e:
+                    logger.warning("종목 %s 수익률 조회 실패: %s", ticker, e)
+                    return ticker, []
+
+        gather_results = await asyncio.gather(*[_fetch(t) for t in tickers])
+        return {t: r for t, r in gather_results if r}
 
     def get_returns_dict_sync(
-        self, tickers: Sequence[str], period: str = "1y"
+        self,
+        tickers: Sequence[str],
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        max_concurrent: int = 5,
     ) -> Dict[str, List[float]]:
-        return _run_sync(self.get_returns_dict(tickers, period))
+        return _run_sync(self.get_returns_dict(tickers, start_date, end_date, max_concurrent))
 
     # ── 캐시 관리 ─────────────────────────────────────────────
 

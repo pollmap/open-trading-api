@@ -59,6 +59,11 @@ __all__ = [
     "QuantPipeline",
     "PipelineConfig",
     "PipelineResult",
+    # 전략 비교
+    "StrategyComparison",
+    "ComparisonResult",
+    "StrategyResult",
 ]
 
 from kis_backtest.core.pipeline import QuantPipeline, PipelineConfig, PipelineResult
+from kis_backtest.core.strategy_comparison import StrategyComparison, ComparisonResult, StrategyResult

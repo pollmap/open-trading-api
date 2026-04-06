@@ -207,10 +207,16 @@ class TestBLWeights:
                 "optimal_weights": {"005930": 0.15, "000660": 0.12},
             },
         }
+        # BL now requires returns_dict (series_list/names are derived from it)
+        returns_dict = {
+            "005930": [0.01, -0.005, 0.008] * 20,
+            "000660": [0.015, -0.01, 0.003] * 20,
+        }
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = mock_result
             weights = await provider.get_bl_weights(
-                views=[{"ticker": "005930", "view": 0.10}]
+                returns_dict,
+                views=[{"ticker": "005930", "view": 0.10}],
             )
         assert weights["005930"] == pytest.approx(0.15)
         assert weights["000660"] == pytest.approx(0.12)

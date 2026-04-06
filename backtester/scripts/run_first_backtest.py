@@ -65,7 +65,7 @@ def main():
 
     # 5. 벤치마크 데이터 조회
     print("\n[4/5] KODEX200 벤치마크 수익률 조회...")
-    bench = provider.get_benchmark_returns_sync(period="3m")
+    bench = provider.get_benchmark_returns_sync()
     print(f"  수신: {len(bench)}일")
     if bench:
         avg_daily = sum(bench) / len(bench)
