@@ -168,10 +168,10 @@ class TestPortfolioOptimization:
     def mock_provider(self):
         provider = MagicMock(spec=MCPDataProvider)
 
-        async def _bl(returns_dict, **kw):
+        async def _bl(prices_dict, **kw):
             return {"005930": 0.6, "000660": 0.4}
 
-        async def _hrp(returns_dict):
+        async def _hrp(prices_dict):
             return {"005930": 0.5, "000660": 0.5}
 
         provider.get_bl_weights = AsyncMock(side_effect=_bl)
@@ -180,14 +180,19 @@ class TestPortfolioOptimization:
 
     @pytest.mark.asyncio
     async def test_optimize_bl_hrp(self, mock_provider):
+        """BL/HRP에 가격 시계열(dict)이 전달되는지 확인"""
         comp = StrategyComparison(mock_provider, symbols=["005930", "000660"])
-        returns_dict = {"005930": [0.01] * 60, "000660": [-0.005] * 60}
+        # 가격 시계열 (float 배열이 아님)
+        prices_dict = {
+            "005930": [{"date": f"2025-01-{i+1:02d}", "close": 70000 + i} for i in range(60)],
+            "000660": [{"date": f"2025-01-{i+1:02d}", "close": 130000 + i} for i in range(60)],
+        }
         factor_scores = {
             "005930": {"name": "삼성전자", "score": 0.8, "sector": "IT"},
             "000660": {"name": "SK하이닉스", "score": 0.7, "sector": "IT"},
         }
 
-        bl, hrp = await comp.optimize_portfolio(returns_dict, factor_scores)
+        bl, hrp = await comp.optimize_portfolio(prices_dict, factor_scores)
 
         assert bl["005930"] == pytest.approx(0.6)
         assert hrp["005930"] == pytest.approx(0.5)

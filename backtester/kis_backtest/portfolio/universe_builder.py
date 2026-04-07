@@ -105,8 +105,8 @@ DEFAULT_SECTORS = [
     SectorDef("우주", ["한화에어로"], candidates={
         "012450": "한화에어로스페이스", "099320": "쎄트렉아이", "047810": "한국항공우주",
     }),
-    SectorDef("방산", ["한화에어로", "현대로템"], candidates={
-        "064350": "현대로템", "079550": "LIG넥스원", "012450": "한화에어로스페이스",
+    SectorDef("방산", ["현대로템", "LIG넥스원"], candidates={
+        "064350": "현대로템", "079550": "LIG넥스원", "047810": "한국항공우주",
     }),
     SectorDef("조선", ["HD한국조선", "삼성중공"], candidates={
         "009540": "HD한국조선해양", "010140": "삼성중공업", "329180": "HD현대중공업",
@@ -173,7 +173,15 @@ class UniverseBuilder:
         for sector in self._sectors:
             try:
                 selected = await self._select_sector(sector)
+                added = []
                 for stock in selected:
+                    if stock.ticker in all_stocks:
+                        log.append(
+                            f"  DEDUP: {stock.name}({stock.ticker}) "
+                            f"이미 {all_stocks[stock.ticker]['sector']}에 포함, "
+                            f"{sector.name}에서 제외"
+                        )
+                        continue
                     all_stocks[stock.ticker] = {
                         "name": stock.name,
                         "sector": sector.name,
@@ -183,7 +191,8 @@ class UniverseBuilder:
                         "score": stock.score,
                         "market": stock.market,
                     }
-                names = [s.name for s in selected]
+                    added.append(stock)
+                names = [s.name for s in added]
                 log.append(f"  {sector.name}: {', '.join(names)} ({len(selected)}종목)")
             except Exception as e:
                 log.append(f"  {sector.name}: 실패 — {e}")
@@ -290,14 +299,17 @@ class UniverseBuilder:
 
 
 def _extract_float(data: Dict[str, Any], *keys: str) -> float:
-    """dict에서 여러 키 중 첫 번째 유효한 float 추출"""
+    """dict에서 여러 키 중 첫 번째 유효한 float 추출
+
+    DART API는 ROE=35.6, OPM=48.6, DTE=45.9 등 % 단위 숫자를 반환.
+    _compute_screening_score()에서 30/25/300 기준으로 정규화하므로
+    여기서는 변환 없이 원본 그대로 반환.
+    """
     for key in keys:
         val = data.get(key)
         if val is not None:
             try:
-                v = float(val)
-                # 백분율→비율 변환: 100 이상이면 이미 %단위
-                return v if abs(v) < 100 else v
+                return float(val)
             except (ValueError, TypeError):
                 continue
     return 0.0

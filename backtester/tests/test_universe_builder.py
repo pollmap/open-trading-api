@@ -104,6 +104,11 @@ class TestGetReturnsDictFixed:
 # D-2: get_bl_weights fix (series_list/names 필수)
 # ============================================================
 
+def _make_prices(ticker: str, n: int = 60, base: int = 50000) -> list:
+    """테스트용 가격 시계열 생성 [{date, close}]"""
+    return [{"date": f"2025-01-{i+1:02d}", "close": base + i * 100} for i in range(n)]
+
+
 class TestBLWeightsFixed:
     @pytest.fixture
     def provider(self):
@@ -111,10 +116,10 @@ class TestBLWeightsFixed:
 
     @pytest.mark.asyncio
     async def test_bl_weights_sends_series_list(self, provider):
-        """series_list와 names가 MCP에 전달되는지 확인"""
-        returns_dict = {
-            "005930": [0.01, -0.005, 0.008] * 20,
-            "000660": [0.015, -0.01, 0.003] * 20,
+        """series_list가 {date, value} dict 포맷으로 MCP에 전달되는지 확인"""
+        prices_dict = {
+            "005930": _make_prices("005930", 60, 70000),
+            "000660": _make_prices("000660", 60, 130000),
         }
         mock_result = {
             "success": True,
@@ -123,7 +128,7 @@ class TestBLWeightsFixed:
 
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = mock_result
-            weights = await provider.get_bl_weights(returns_dict)
+            weights = await provider.get_bl_weights(prices_dict)
 
         call_args = mock.call_args[0]
         assert call_args[0] == "portadv_black_litterman"
@@ -131,27 +136,39 @@ class TestBLWeightsFixed:
         assert "series_list" in tool_args
         assert "names" in tool_args
         assert len(tool_args["series_list"]) == 2
-        assert set(tool_args["names"]) == {"005930", "000660"}
-
+        # series_list 원소가 {date, value} dict인지 검증 (float이면 MCP 에러)
+        assert isinstance(tool_args["series_list"][0][0], dict)
+        assert "date" in tool_args["series_list"][0][0]
+        assert "value" in tool_args["series_list"][0][0]
         assert weights["005930"] == pytest.approx(0.6)
 
     @pytest.mark.asyncio
     async def test_bl_weights_insufficient_data(self, provider):
         """30일 미만 데이터 → 빈 dict 반환"""
-        returns_dict = {"005930": [0.01] * 10}
-        weights = await provider.get_bl_weights(returns_dict)
+        prices_dict = {"005930": _make_prices("005930", 10)}
+        weights = await provider.get_bl_weights(prices_dict)
         assert weights == {}
+
+    @pytest.mark.asyncio
+    async def test_bl_rejects_float_arrays(self, provider):
+        """float 배열 전달 시 ValueError 발생 (MCP가 거부하므로)"""
+        float_dict = {"A": [0.01] * 50, "B": [0.02] * 50}
+        with pytest.raises(ValueError, match="가격 시계열"):
+            await provider.get_bl_weights(float_dict)
 
     @pytest.mark.asyncio
     async def test_bl_weights_with_views_and_caps(self, provider):
         """views와 market_caps가 올바르게 전달되는지"""
-        returns_dict = {"A": [0.01] * 50, "B": [0.02] * 50}
+        prices_dict = {
+            "A": _make_prices("A", 50, 10000),
+            "B": _make_prices("B", 50, 20000),
+        }
         views = [{"asset": "A", "return": 0.12, "confidence": 0.8}]
         caps = {"A": 100000, "B": 50000}
 
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = {"success": True, "data": {"optimal_weights": {"A": 0.7, "B": 0.3}}}
-            await provider.get_bl_weights(returns_dict, views=views, market_caps=caps, risk_free_rate=0.025)
+            await provider.get_bl_weights(prices_dict, views=views, market_caps=caps, risk_free_rate=0.025)
 
         tool_args = mock.call_args[0][1]
         assert tool_args["views"] == views
@@ -170,8 +187,12 @@ class TestHRPWeights:
 
     @pytest.mark.asyncio
     async def test_hrp_weights_calls_portadv_hrp(self, provider):
-        """portadv_hrp MCP 도구가 호출되는지"""
-        returns_dict = {"A": [0.01] * 60, "B": [-0.005] * 60, "C": [0.008] * 60}
+        """portadv_hrp MCP 도구가 호출되는지 (가격 시계열 포맷)"""
+        prices_dict = {
+            "A": _make_prices("A", 60, 10000),
+            "B": _make_prices("B", 60, 20000),
+            "C": _make_prices("C", 60, 30000),
+        }
         mock_result = {
             "success": True,
             "data": {"optimal_weights": {"A": 0.4, "B": 0.3, "C": 0.3}},
@@ -179,24 +200,34 @@ class TestHRPWeights:
 
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = mock_result
-            weights = await provider.get_hrp_weights(returns_dict)
+            weights = await provider.get_hrp_weights(prices_dict)
 
         assert mock.call_args[0][0] == "portadv_hrp"
         assert len(mock.call_args[0][1]["series_list"]) == 3
+        assert isinstance(mock.call_args[0][1]["series_list"][0][0], dict)
         assert weights["A"] == pytest.approx(0.4)
 
     @pytest.mark.asyncio
     async def test_hrp_weights_aligns_lengths(self, provider):
-        """서로 다른 길이의 수익률 → 최소 공통 길이로 정렬"""
-        returns_dict = {"A": [0.01] * 100, "B": [0.02] * 60}
+        """서로 다른 길이의 가격 시계열 → 최소 공통 길이로 정렬"""
+        prices_dict = {
+            "A": _make_prices("A", 100, 10000),
+            "B": _make_prices("B", 60, 20000),
+        }
 
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = {"success": True, "data": {"optimal_weights": {"A": 0.5, "B": 0.5}}}
-            await provider.get_hrp_weights(returns_dict)
+            await provider.get_hrp_weights(prices_dict)
 
         series = mock.call_args[0][1]["series_list"]
-        assert len(series[0]) == 60  # 최소 길이로 자름
+        assert len(series[0]) == 60
         assert len(series[1]) == 60
+
+    @pytest.mark.asyncio
+    async def test_hrp_rejects_float_arrays(self, provider):
+        """float 배열은 ValueError"""
+        with pytest.raises(ValueError, match="가격 시계열"):
+            await provider.get_hrp_weights({"A": [0.01] * 60})
 
 
 # ============================================================

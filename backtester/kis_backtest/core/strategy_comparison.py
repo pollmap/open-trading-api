@@ -238,10 +238,15 @@ class StrategyComparison:
 
     async def optimize_portfolio(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
         factor_scores: Dict[str, Dict[str, Any]],
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         """BL + HRP 비중 동시 계산 → 비교
+
+        Args:
+            prices_dict: {ticker: [{"date": "...", "close": N}, ...]} — 가격 시계열 원본
+                         get_prices_dict()로 수집한 데이터 사용
+            factor_scores: {ticker: {"name", "score", "sector"}}
 
         Returns:
             (bl_weights, hrp_weights)
@@ -251,8 +256,8 @@ class StrategyComparison:
         mcp_views = bl_views_to_mcp_format(views)
 
         # 병렬 실행
-        bl_task = self._mcp.get_bl_weights(returns_dict, views=mcp_views)
-        hrp_task = self._mcp.get_hrp_weights(returns_dict)
+        bl_task = self._mcp.get_bl_weights(prices_dict, views=mcp_views)
+        hrp_task = self._mcp.get_hrp_weights(prices_dict)
 
         bl_weights, hrp_weights = await asyncio.gather(
             bl_task, hrp_task, return_exceptions=True
@@ -318,11 +323,11 @@ class StrategyComparison:
 
     def optimize_portfolio_sync(
         self,
-        returns_dict: Dict[str, List[float]],
+        prices_dict: Dict[str, List[Any]],
         factor_scores: Dict[str, Dict[str, Any]],
     ) -> Tuple[Dict[str, float], Dict[str, float]]:
         from kis_backtest.portfolio.mcp_data_provider import _run_sync
-        return _run_sync(self.optimize_portfolio(returns_dict, factor_scores))
+        return _run_sync(self.optimize_portfolio(prices_dict, factor_scores))
 
 
 def _safe_float(val: Any) -> Optional[float]:

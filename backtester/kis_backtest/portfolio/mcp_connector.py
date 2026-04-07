@@ -151,8 +151,8 @@ def normalize_bl_weights(
 
 def normalize_returns(
     raw_result: Dict[str, Any],
-) -> Dict[str, List[float]]:
-    """MCP stocks_history 결과를 일간 수익률 dict로 변환
+) -> List[float]:
+    """MCP stocks_history 결과를 일간 수익률 리스트로 변환
 
     MCP 결과 예시:
     {
@@ -164,10 +164,10 @@ def normalize_returns(
         ]
     }
 
-    출력: [0.009, -0.003, ...]  (일간 수익률)
+    출력: [0.009, -0.003, ...]  (일간 수익률 리스트)
     """
     if not raw_result or not raw_result.get("success"):
-        return {}
+        return []
 
     data = raw_result.get("data", [])
 

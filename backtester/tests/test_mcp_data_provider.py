@@ -207,17 +207,22 @@ class TestBLWeights:
                 "optimal_weights": {"005930": 0.15, "000660": 0.12},
             },
         }
-        # BL now requires returns_dict (series_list/names are derived from it)
-        returns_dict = {
-            "005930": [0.01, -0.005, 0.008] * 20,
-            "000660": [0.015, -0.01, 0.003] * 20,
+        # BL requires price timeseries [{date, close}], not float returns
+        prices_dict = {
+            "005930": [{"date": f"2025-01-{i+1:02d}", "close": 70000 + i * 100} for i in range(60)],
+            "000660": [{"date": f"2025-01-{i+1:02d}", "close": 130000 + i * 50} for i in range(60)],
         }
         with patch.object(provider, "_call_vps_tool", new_callable=AsyncMock) as mock:
             mock.return_value = mock_result
             weights = await provider.get_bl_weights(
-                returns_dict,
+                prices_dict,
                 views=[{"ticker": "005930", "view": 0.10}],
             )
+        # series_list가 {date, value} dict 포맷으로 전송되는지 확인
+        call_args = mock.call_args[0][1]
+        assert isinstance(call_args["series_list"][0][0], dict)
+        assert "date" in call_args["series_list"][0][0]
+        assert "value" in call_args["series_list"][0][0]
         assert weights["005930"] == pytest.approx(0.15)
         assert weights["000660"] == pytest.approx(0.12)
 
@@ -271,9 +276,14 @@ class TestSyncWrappers:
             "get_factor_scores_sync",
             "get_stock_returns_sync",
             "get_bl_weights_sync",
+            "get_hrp_weights_sync",
             "get_dart_financials_sync",
             "get_garch_vol_sync",
             "get_returns_dict_sync",
+            "get_stock_prices_sync",
+            "get_prices_dict_sync",
+            "search_stocks_sync",
+            "run_and_wait_backtest_sync",
             "health_check_sync",
         ]
         for method_name in sync_methods:

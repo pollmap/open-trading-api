@@ -600,6 +600,8 @@ class MCPDataProvider:
                 self._set_cached(cache_key, weights)
                 logger.info("BL 최적화 %d종목 완료", len(weights))
                 return weights
+        except ValueError:
+            raise  # 입력 형식 오류는 호출자에게 전파
         except Exception as e:
             logger.warning("BL 최적화 실패: %s", e)
 
@@ -654,6 +656,8 @@ class MCPDataProvider:
                 self._set_cached(cache_key, weights)
                 logger.info("HRP 최적화 %d종목 완료", len(weights))
                 return weights
+        except ValueError:
+            raise  # 입력 형식 오류는 호출자에게 전파
         except Exception as e:
             logger.warning("HRP 최적화 실패: %s", e)
 
@@ -695,12 +699,13 @@ class MCPDataProvider:
                 for t in tickers
             ]
 
-        # [float] 형태 → 그대로 전달 (하위 호환)
+        # [float] 형태 → MCP는 {date, value} 필수이므로 에러
         if isinstance(sample[0], (int, float)):
-            min_len = min(len(data_dict[t]) for t in tickers)
-            if min_len < 30:
-                return None
-            return [data_dict[t][-min_len:] for t in tickers]
+            raise ValueError(
+                "BL/HRP에는 가격 시계열 [{date, close}] 필요. "
+                "수익률 [float] 배열은 MCP가 거부합니다. "
+                "get_prices_dict()로 가격 원본을 사용하세요."
+            )
 
         return None
 

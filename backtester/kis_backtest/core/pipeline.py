@@ -88,7 +88,7 @@ class PipelineResult:
     dd_state: Optional[str]
     estimated_annual_cost: float
     kelly_allocation: float
-    auto_bl_views: Optional[List] = None  # 팩터→BL 자동 뷰 (None이면 수동 비중 사용)
+    auto_bl_views: Optional[List] = None  # 참고용 출력 — StrategyComparison.optimize_portfolio()에 수동 전달 필요
 
 
 class QuantPipeline:
