@@ -1,12 +1,12 @@
 # Luxon AI Quant System — Architecture & Design
 
-> **버전**: v0.3α | **테스트**: 378/378 PASS | **도구**: MCP 364개 | **GitHub**: pollmap/open-trading-api
+> **버전**: v0.3α | **테스트**: 378/378 PASS | **도구**: MCP 398개 | **GitHub**: pollmap/open-trading-api
 
 ---
 
 ## 1. 한 문장 요약
 
-**MCP 364개 금융 도구로 데이터를 수집하고, 학술 기반 리스크 모듈로 검증하고, 개인투자자 제약을 반영해서, 실제 KIS API로 주문을 실행하는 1인 AI 퀀트 운용 시스템.**
+**MCP 398개 금융 도구로 데이터를 수집하고, 학술 기반 리스크 모듈로 검증하고, 개인투자자 제약을 반영해서, 실제 KIS API로 주문을 실행하는 1인 AI 퀀트 운용 시스템.**
 
 ---
 
@@ -62,7 +62,7 @@
 │                                  │                               │
 │ Nexus Finance MCP (VPS)          │ KIS Backtest MCP              │
 │ 62.171.141.206:8100              │ 127.0.0.1:3846                │
-│ 364 도구 / 64 서버               │ 10 프리셋 전략                │
+│ 398 도구 / 64 서버               │ 10 프리셋 전략                │
 │                                  │                               │
 │ ┌────┬────┬────┬────┬────┐      │ ┌──────────────────┐          │
 │ │KRX │DART│ECOS│FRED│크립│      │ │ SMA, Momentum,   │          │
@@ -365,7 +365,7 @@ report = pipeline.review(equity_curve=[...])
 ┌─ VPS (62.171.141.206) ──────────────────────────────────┐
 │                                                          │
 │  Nexus Finance MCP (:8100)                              │
-│  364 도구 / 64 서버                                     │
+│  398 도구 / 64 서버                                     │
 │  Bearer 토큰 인증                                       │
 │                                                          │
 │  HERMES (발행, :18789)  ─── Discord/GitHub Pages        │
@@ -546,4 +546,4 @@ print(result.order.summary())
 
 ---
 
-*Luxon AI Quant System v0.3α | 378 tests | MCP 364 tools | pollmap/open-trading-api*
+*Luxon AI Quant System v0.3α | 378 tests | MCP 398 tools | pollmap/open-trading-api*
