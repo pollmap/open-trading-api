@@ -30,6 +30,7 @@ from kis_backtest.portfolio.review_engine import (
 )
 
 if TYPE_CHECKING:
+    from kis_backtest.execution.capital_ladder import CapitalLadder
     from kis_backtest.models.trading import AccountBalance, Position
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,7 @@ class ReviewScheduler:
         vault_writer: VaultWriter,
         kill_conditions: Optional[List[KillCondition]] = None,
         initial_capital: float = 5_000_000,
+        capital_ladder: Optional["CapitalLadder"] = None,
     ) -> None:
         """ReviewScheduler 초기화
 
@@ -130,12 +132,14 @@ class ReviewScheduler:
             vault_writer: Vault 저장 담당
             kill_conditions: 투자논지 반증 조건 목록
             initial_capital: 초기 투자금 (원)
+            capital_ladder: Capital Ladder (점진적 자본 배포, 선택)
         """
         self._brokerage = brokerage
         self._engine = review_engine
         self._vault = vault_writer
         self._kill_conditions = kill_conditions or []
         self._initial_capital = initial_capital
+        self._ladder = capital_ladder
 
         self._equity_history: List[Tuple[str, float]] = []
         self._trade_buffer: List[TradeRecord] = []
@@ -197,12 +201,20 @@ class ReviewScheduler:
         )
         self._daily_snapshots.append(snapshot)
 
+        # Capital Ladder 업데이트 (연결 시)
+        ladder_event = None
+        if self._ladder is not None:
+            ladder_event = self._ladder.update(equity, dt=date)
+            if ladder_event:
+                logger.info("래더 이벤트: %s", ladder_event)
+
         logger.info(
-            "일간 스냅샷 완료: %s | 자산 %s원 | DD %.2f%% | 종목 %d개",
+            "일간 스냅샷 완료: %s | 자산 %s원 | DD %.2f%% | 종목 %d개%s",
             date,
             f"{equity:,.0f}",
             dd_from_peak * 100,
             len(positions),
+            f" | 래더: {ladder_event}" if ladder_event else "",
         )
 
         return snapshot

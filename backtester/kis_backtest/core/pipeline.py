@@ -492,3 +492,32 @@ class QuantPipeline:
         feedback_msg = f"FEEDBACK: 백테스트 Sharpe={real_sharpe}, MDD={real_mdd} 반영"
         result2.risk_details.insert(0, feedback_msg)
         return result2
+
+    def validate_oos(
+        self,
+        returns_dict: Dict[str, Sequence[float]],
+        optimal_weights: Dict[str, float],
+        n_folds: int = 5,
+        min_sharpe: float = 0.3,
+    ) -> "WFResult":
+        """Walk-Forward OOS 검증 (편의 메서드)
+
+        포트폴리오 수익률을 비중 가중합으로 합친 뒤 N-fold 검증.
+
+        Args:
+            returns_dict: 종목별 일간 수익률
+            optimal_weights: 종목별 비중
+            n_folds: 폴드 수 (기본 5)
+            min_sharpe: 최소 OOS Sharpe (기본 0.3)
+
+        Returns:
+            WFResult: 검증 결과 (passed, verdict, folds 등)
+        """
+        from kis_backtest.core.walk_forward import WalkForwardValidator, WFConfig
+
+        validator = WalkForwardValidator(WFConfig(
+            n_folds=n_folds,
+            min_sharpe=min_sharpe,
+            max_oos_dd=self.config.max_drawdown,
+        ))
+        return validator.validate_multi_asset(returns_dict, optimal_weights)

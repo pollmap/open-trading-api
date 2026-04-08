@@ -63,7 +63,12 @@ __all__ = [
     "StrategyComparison",
     "ComparisonResult",
     "StrategyResult",
+    # Walk-Forward 검증
+    "WalkForwardValidator",
+    "WFConfig",
+    "WFResult",
 ]
 
 from kis_backtest.core.pipeline import QuantPipeline, PipelineConfig, PipelineResult
 from kis_backtest.core.strategy_comparison import StrategyComparison, ComparisonResult, StrategyResult
+from kis_backtest.core.walk_forward import WalkForwardValidator, WFConfig, WFResult
