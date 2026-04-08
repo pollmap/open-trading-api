@@ -54,7 +54,7 @@
 │     /quant-fund [preset]    — 퀀트 분석 + 포트폴리오             │
 │     /cufa-report [ticker]   — 기업 심층 분석 (80K자+)            │
 │     /kis-team               — 전략→백테스트→실행 풀 파이프라인   │
-│     /finance-report         — MCP 364도구 데이터 리포트          │
+│     /finance-report         — MCP 398도구 데이터 리포트          │
 │     /macro-dashboard        — 거시경제 10대 지표                 │
 │                                                                  │
 ├──────────────────────────────────┬──────────────────────────────┤
