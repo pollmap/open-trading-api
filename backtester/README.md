@@ -1,6 +1,8 @@
-# Backtester — 퀀트 전략 백테스팅 엔진
+# Backtester — AI 퀀트 운용 시스템 v0.3α
 
-한국투자증권 Open API 기반 **퀀트 전략 백테스팅 시스템**입니다.
+> **378 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | [ARCHITECTURE.md](ARCHITECTURE.md)
+
+한국투자증권 Open API 기반 **1인 AI 퀀트 운용 시스템**입니다.
 
 Python 라이브러리(`kis_backtest`)로 전략을 정의하고,
 QuantConnect Lean 엔진(Docker)에서 과거 데이터로 성과를 검증합니다.
