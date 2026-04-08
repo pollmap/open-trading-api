@@ -1,6 +1,6 @@
 # Luxon AI Quant System — Architecture & Design
 
-> **버전**: v0.2α | **테스트**: 179/179 PASS | **도구**: MCP 364개 | **GitHub**: pollmap/open-trading-api
+> **버전**: v0.3α | **테스트**: 378/378 PASS | **도구**: MCP 364개 | **GitHub**: pollmap/open-trading-api
 
 ---
 
@@ -515,6 +515,35 @@ print(result.order.summary())
 - `get_hrp_weights()`: portadv_hrp MCP 도구 (López de Prado HRP)
 - `search_stocks()`: stocks_search MCP 도구 (한국어 종목 검색)
 
+### v0.3α 변경사항 (2026-04-08)
+
+**신규 모듈 (Phase 1-4+6 실행 계층):**
+
+- `walk_forward.py` (core/walk_forward.py): Walk-Forward OOS 검증
+  - N-fold 롤링/확장 윈도우 IS→OOS 분석
+  - Sharpe degradation 추적 (과최적화 탐지)
+  - 멀티 종목 포트폴리오 검증 (validate_multi_asset)
+  - 21 tests
+
+- `capital_ladder.py` (execution/capital_ladder.py): 점진적 자본 배포
+  - 5단계: PAPER(0%) → SEED(10%) → GROWTH(30%) → SCALE(60%) → FULL(100%)
+  - 자동 승격/강등 (Sharpe/MDD/기간 기반)
+  - JSON 상태 영속성 (서버 재시작 시 복원)
+  - 40 tests
+
+- `upbit/` (providers/upbit/): 업비트 거래소 클라이언트
+  - REST: 시세, 호가, 캔들, 계좌, 주문 (JWT 인증)
+  - WebSocket: ticker/trade/orderbook 실시간 스트리밍
+  - pyupbit(Apache 2.0) 참고, httpx/websockets 기반 자체 구현
+  - 31 tests
+
+**인프라:**
+- `conftest.py`: 루트에서 pytest 실행 가능 (sys.path 자동 추가)
+- `setup_scheduler.ps1`: Windows Task Scheduler 자동 등록 (일일 16:00/주간 금 16:30)
+- `run_paper_trading.py --ladder`: Capital Ladder 연동 옵션 추가
+
+**테스트:** 286 → 378 (+92), 회귀 0건
+
 ---
 
-*Luxon AI Quant System v0.2α | 179 tests | MCP 364 tools | pollmap/open-trading-api*
+*Luxon AI Quant System v0.3α | 378 tests | MCP 364 tools | pollmap/open-trading-api*
