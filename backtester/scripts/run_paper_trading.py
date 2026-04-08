@@ -257,15 +257,8 @@ def main() -> int:
 
         # ── d) RiskGateway 체크 ──────────────────────────────
         print("\n[2/4] RiskGateway 체크...")
-        gateway = RiskGateway(
-            mode="paper",
-            kill_switch=kill_switch,
-            require_market_hours=False,  # 페이퍼 모드: 시간 체크 완화
-        )
 
-        balance = brokerage.get_balance()
-
-        # order가 없으면 게이트웨이 체크 스킵
+        # order가 없으면 게이트웨이 체크 스킵 (API 호출 불필요)
         if pipeline_result.order is None:
             print("  PortfolioOrder 없음 -- 게이트웨이 체크 스킵")
             print("  (QuantPipeline 실행 후 다시 시도하세요)")
@@ -274,6 +267,14 @@ def main() -> int:
                 return _run_review(brokerage, args.capital)
 
             return 0
+
+        gateway = RiskGateway(
+            mode="paper",
+            kill_switch=kill_switch,
+            require_market_hours=False,  # 페이퍼 모드: 시간 체크 완화
+        )
+
+        balance = brokerage.get_balance()
 
         # planned_trades 계산을 위해 executor 먼저 생성
         executor = LiveOrderExecutor(
