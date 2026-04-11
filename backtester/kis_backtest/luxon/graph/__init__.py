@@ -15,6 +15,7 @@ from kis_backtest.luxon.graph.ingestors.cufa_ingestor import (
 )
 from kis_backtest.luxon.graph.ingestors.phase1_ingestor import Phase1Ingestor
 from kis_backtest.luxon.graph.nodes import GraphNode, NodeKind, make_node_id
+from kis_backtest.luxon.graph.parsers.cufa_html_parser import CufaHtmlParser
 from kis_backtest.luxon.graph.viz.html_renderer import (
     NODE_COLORS,
     render_graph_html,
@@ -32,6 +33,7 @@ __all__ = [
     "CorrelatedIngestor",
     "CufaIngestor",
     "CufaReportDigest",
+    "CufaHtmlParser",
     "render_graph_html",
     "NODE_COLORS",
 ]
