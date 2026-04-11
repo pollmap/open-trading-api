@@ -1,0 +1,104 @@
+# Luxon Terminal — Sprint 1 FRED Series Registry (SSOT)
+#
+# 10개 FRED 거시 지표 카탈로그. Druckenmiller 4-state 레짐 판별 +
+# 한국 노출도(원/달러, 원유) 반영.
+#
+# 이 파일은 Sprint 1의 모든 에이전트(A1 FREDHub, A2 MacroDashboard,
+# A3 MCPFallback, A4 Tests, A5 SchemaGuard, A6 Docs)가 참조하는
+# 유일한 시리즈 카탈로그 (Single Source of Truth).
+#
+# 수정 권한: A5 (Schema Guard) 또는 Luxon 본인만.
+# 6-에이전트 병렬 개발 프로토콜 (플랜 섹션 13.4) 준수.
+#
+# 참조: backtester/kis_backtest/luxon/stream/schema.py
+
+version: "1.0.0"
+last_updated: "2026-04-11"
+cache:
+  base_dir: "~/.luxon/cache/fred"
+  ttl_hours: 6
+  format: "parquet"
+
+staleness:
+  default_threshold_business_days: 5
+
+series:
+  - id: DGS10
+    fred_code: DGS10
+    label_ko: 미 10년물 국채금리
+    unit: percent
+    freq: daily
+    transform: none
+    category: rates
+
+  - id: DGS2
+    fred_code: DGS2
+    label_ko: 미 2년물 국채금리
+    unit: percent
+    freq: daily
+    transform: none
+    category: rates
+
+  - id: T10Y2Y
+    fred_code: T10Y2Y
+    label_ko: 10-2 스프레드 (경기침체 신호)
+    unit: percent
+    freq: daily
+    transform: none
+    category: rates
+
+  - id: DFF
+    fred_code: DFF
+    label_ko: 연방기금 실효 금리
+    unit: percent
+    freq: daily
+    transform: none
+    category: rates
+
+  - id: CPIAUCSL
+    fred_code: CPIAUCSL
+    label_ko: 소비자물가지수 (YoY)
+    unit: percent
+    freq: monthly
+    transform: pct_change_yoy
+    category: inflation
+
+  - id: UNRATE
+    fred_code: UNRATE
+    label_ko: 실업률
+    unit: percent
+    freq: monthly
+    transform: none
+    category: labor
+
+  - id: M2SL
+    fred_code: M2SL
+    label_ko: M2 통화량 (YoY)
+    unit: percent
+    freq: monthly
+    transform: pct_change_yoy
+    category: liquidity
+
+  - id: VIXCLS
+    fred_code: VIXCLS
+    label_ko: VIX 변동성 지수
+    unit: index
+    freq: daily
+    transform: none
+    category: risk
+
+  - id: DCOILWTICO
+    fred_code: DCOILWTICO
+    label_ko: WTI 원유
+    unit: usd_per_barrel
+    freq: daily
+    transform: none
+    category: commodity
+
+  - id: DEXKOUS
+    fred_code: DEXKOUS
+    label_ko: 원/달러 환율
+    unit: krw_per_usd
+    freq: daily
+    transform: none
+    category: fx

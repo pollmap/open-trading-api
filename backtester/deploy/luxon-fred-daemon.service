@@ -1,0 +1,62 @@
+# Luxon Terminal — FRED Macro Daemon systemd 유닛 (Sprint 1.5)
+# VPS 프로덕션 배포용
+#
+# 설치:
+#   sudo cp deploy/luxon-fred-daemon.service /etc/systemd/system/
+#   sudo cp deploy/luxon-fred-daemon.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now luxon-fred-daemon.timer
+#
+# 상태 확인:
+#   systemctl status luxon-fred-daemon.timer
+#   systemctl list-timers luxon-fred-daemon.timer
+#   journalctl -u luxon-fred-daemon.service -f
+#
+# 수동 실행:
+#   sudo systemctl start luxon-fred-daemon.service
+
+[Unit]
+Description=Luxon Terminal FRED Macro Daemon (Sprint 1.5)
+Documentation=https://github.com/pollmap/open-trading-api
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=luxon
+Group=luxon
+
+# 경로 (VPS 배포 시 조정)
+WorkingDirectory=/opt/luxon-terminal/backtester
+Environment="PYTHONIOENCODING=utf-8"
+Environment="LUXON_VAULT_ROOT=/root/obsidian-vault"
+Environment="LUXON_CACHE_DIR=/var/lib/luxon/cache/fred"
+Environment="LUXON_STATE_DIR=/var/lib/luxon/state"
+
+# EnvironmentFile로 비밀 키 주입 (Discord 웹훅 등)
+EnvironmentFile=-/etc/luxon/luxon.env
+
+# 실행 명령
+ExecStart=/opt/luxon-terminal/backtester/.venv/bin/python \
+    /opt/luxon-terminal/backtester/scripts/luxon_macro_daemon.py \
+    --mode oneshot \
+    --out-png /var/lib/luxon/out/macro.png \
+    --out-html /var/lib/luxon/out/macro.html
+
+# 타임아웃
+TimeoutStartSec=900
+
+# 로깅
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=luxon-fred-daemon
+
+# 보안 하드닝
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/luxon /root/obsidian-vault
+
+[Install]
+WantedBy=multi-user.target

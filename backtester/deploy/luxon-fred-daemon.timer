@@ -1,0 +1,31 @@
+# Luxon Terminal — FRED Macro Daemon systemd 타이머 (Sprint 1.5)
+# 매 시간 정각 실행 (VPS 24/7 프로덕션)
+#
+# 설치/활성화:
+#   sudo cp deploy/luxon-fred-daemon.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now luxon-fred-daemon.timer
+#
+# 다음 실행 확인:
+#   systemctl list-timers luxon-fred-daemon.timer
+
+[Unit]
+Description=Luxon Terminal FRED Macro Daemon Hourly Timer
+Documentation=https://github.com/pollmap/open-trading-api
+Requires=luxon-fred-daemon.service
+
+[Timer]
+# 매 시간 정각 (00:00, 01:00, ..., 23:00)
+OnCalendar=hourly
+
+# 시스템 부팅 시 누락된 실행이 있으면 즉시 실행 (catch-up)
+Persistent=true
+
+# 실행 시각 jitter (최대 5분 랜덤 지연 — 동시 실행 부하 분산)
+RandomizedDelaySec=300
+
+# 타이머의 정확도 (기본 1분)
+AccuracySec=60
+
+[Install]
+WantedBy=timers.target
