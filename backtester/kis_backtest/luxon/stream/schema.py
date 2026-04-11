@@ -175,8 +175,143 @@ class StalenessReport:
     checked_at: datetime = field(default_factory=datetime.now)
 
 
+# =====================================================================
+# Sprint 3 — TickVault (실시간 틱 저장소) SSOT 확장
+# =====================================================================
+#
+# 원칙 (Sprint 3 착수 가이드 DoD):
+#   1. 재사용 의무 — 기존 FRED 타입 패턴 그대로 복제 (frozen dataclass)
+#   2. 빈 데이터 거부 — 목업/가짜 데이터 생성 금지 (실데이터 절대 원칙)
+#   3. 교체 가능성 — Phase 4 ClickHouse 마이그레이션 시 TickPoint는 불변
+#   4. 경로 규약 — ~/.luxon/data/ticks/{exchange}/{symbol}/{YYYY-MM-DD}.pkl
+
+
+class Exchange(str, Enum):
+    """TickVault가 수집하는 거래소 식별자.
+
+    경로 규약에 사용되므로 값은 lowercase 영문으로 고정.
+    Phase 4에서 CCXT 통합 시 값을 추가할 예정.
+    """
+
+    KIS = "kis"        # 한국투자증권 (KRX KOSPI/KOSDAQ)
+    UPBIT = "upbit"    # 업비트 (KRW 마켓 중심 암호화폐)
+
+
+@dataclass(frozen=True)
+class TickPoint:
+    """단일 거래소 틱 (실시간 체결/호가 1건).
+
+    Phase 1 ~ Phase 6 어디서나 통용되는 불변 원본 레코드.
+    FRED 패턴과 일관되게 frozen dataclass로 equality/해싱 안전.
+
+    필수 필드:
+        timestamp    — 거래소 타임스탬프 (epoch ms 변환 후 aware datetime 권장)
+        symbol       — "005930" (KIS) / "KRW-BTC" (Upbit) 원본 그대로
+        exchange     — Exchange enum
+        last         — 마지막 체결가 (>0)
+
+    선택 필드:
+        bid/ask      — 호가 스냅샷 (한쪽만 받는 스트림도 있음)
+        volume       — 해당 틱의 체결 거래량 (누적이 아닌 증분)
+        extra        — 거래소별 보조 컬럼을 frozenset-style tuple로 보존
+
+    설계 주의:
+        - frozen=True는 dict 필드를 여전히 허용하나 equality 충돌을 막기 위해
+          extra는 tuple[tuple[str, Any], ...]로 저장. dict 원하면 dict(extra).
+        - __post_init__에서 값 검증만. 변환은 tap 계층에서.
+    """
+
+    timestamp: datetime
+    symbol: str
+    exchange: Exchange
+    last: float
+    bid: float | None = None
+    ask: float | None = None
+    volume: float | None = None
+    extra: tuple[tuple[str, object], ...] = ()
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.timestamp, datetime):
+            raise TypeError(
+                f"TickPoint.timestamp must be datetime, got {type(self.timestamp).__name__}"
+            )
+        if not self.symbol:
+            raise ValueError(
+                "TickPoint.symbol is empty — 실데이터 절대 원칙 위반 (목업/빈 데이터 금지)"
+            )
+        # [SECURITY] A6 보안 감사 HIGH-2: symbol path injection 차단.
+        # TickVault가 symbol을 파일 경로 세그먼트로 직접 사용하므로, 악성 값이
+        # 들어오면 루트 밖에 파일을 쓸 수 있다. KIS("005930")/Upbit("KRW-BTC")는
+        # 이 문자들을 쓰지 않으므로 거부해도 정상 흐름에 영향 없음.
+        forbidden_in_symbol = ("/", "\\", "..", "\x00")
+        for bad in forbidden_in_symbol:
+            if bad in self.symbol:
+                raise ValueError(
+                    f"TickPoint.symbol contains forbidden path character "
+                    f"{bad!r} (got {self.symbol!r}) — path traversal 방지"
+                )
+        if self.last <= 0:
+            raise ValueError(
+                f"TickPoint.last must be > 0, got {self.last} "
+                f"(symbol={self.symbol}, exchange={self.exchange.value})"
+            )
+        if self.volume is not None and self.volume < 0:
+            raise ValueError(
+                f"TickPoint.volume must be >= 0, got {self.volume}"
+            )
+
+
+@dataclass(frozen=True)
+class TickMeta:
+    """일별 TickVault 파일의 메타데이터 요약.
+
+    TickVault.describe(exchange, symbol, day)가 반환하는 스냅샷.
+    운영 대시보드/감사 로그에서 누적 틱 수와 경로만 빠르게 확인할 때 사용.
+    """
+
+    exchange: Exchange
+    symbol: str
+    day: date
+    path: Path
+    tick_count: int
+    first_timestamp: datetime | None = None
+    last_timestamp: datetime | None = None
+    bytes_on_disk: int = 0
+
+    def is_empty(self) -> bool:
+        """틱이 0개면 True (TickVault.put은 0을 허용하지 않지만 조회는 가능)."""
+        return self.tick_count == 0
+
+
+@dataclass(frozen=True)
+class ReplaySpec:
+    """TickReplayer의 재생 설정.
+
+    Attributes:
+        speed: 1.0=실제 속도, >1 가속, <1 감속, -1 또는 0이면 무한속도(지연 0).
+        start_offset: 파일 첫 틱에서 건너뛸 개수 (테스트/부분 재생용).
+        limit: 재생할 최대 틱 수 (None=전부).
+    """
+
+    speed: float = 1.0
+    start_offset: int = 0
+    limit: int | None = None
+
+    def __post_init__(self) -> None:
+        if self.start_offset < 0:
+            raise ValueError("ReplaySpec.start_offset must be >= 0")
+        if self.limit is not None and self.limit < 0:
+            raise ValueError("ReplaySpec.limit must be None or >= 0")
+
+    @property
+    def is_unlimited_speed(self) -> bool:
+        """speed<=0이면 delay=0으로 전송 (백테스트 전속 재생)."""
+        return self.speed <= 0
+
+
 # 공개 API (A5 외에는 수정 금지)
 __all__ = [
+    # FRED (Sprint 1)
     "FredSeriesId",
     "TransformType",
     "FredSource",
@@ -186,4 +321,9 @@ __all__ = [
     "FredSeries",
     "CacheEntry",
     "StalenessReport",
+    # TickVault (Sprint 3)
+    "Exchange",
+    "TickPoint",
+    "TickMeta",
+    "ReplaySpec",
 ]

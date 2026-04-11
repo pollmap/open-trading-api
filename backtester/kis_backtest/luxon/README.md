@@ -126,6 +126,78 @@ backtester/kis_backtest/luxon/
 
 ---
 
+## 📦 Sprint 3 — TickVault (실시간 틱 저장소)
+
+일별 pickle 파일 기반 경량 틱 저장소. 이름은 Parquet을 유지하되 pyarrow 의존 0, 순수 표준 라이브러리로 동작.
+
+### ✨ 특징
+
+- **일별 pickle 저장** — 심볼당 하루 1파일, 플러시 주기 조절 가능
+- **Exchange 추상화** — KIS/Upbit 공통 `TickPoint` 스키마
+- **Context manager** — `with TickVault() as v:` 자동 flush
+- **Replay 지원** — 동기/비동기 재생, `speed`/`offset`/`limit` 옵션
+- **Retention 정책** — `prune()` 호출로 오래된 파일 자동 삭제
+- **Phase 4에서 ClickHouse로 교체 가능** — 인터페이스만 유지하면 백엔드 스왑 OK
+
+### 🆕 새 모듈
+
+| 파일 | 설명 |
+|---|---|
+| `stream/tick_vault.py` | `TickVault` 클래스 (append/flush/load_day/prune/context manager) |
+| `stream/kis_tick_tap.py` | `KISTickTap` (KIS WebSocket → TickPoint 콜백 어댑터) |
+| `stream/upbit_tick_tap.py` | `UpbitTickTap` (Upbit async generator → TickPoint) |
+| `stream/replay.py` | `TickReplayer` (동기/비동기 재생, speed/offset/limit) |
+| `stream/schema.py` 확장 | `TickPoint`, `TickMeta`, `Exchange`, `ReplaySpec` 타입 추가 |
+
+### 📁 경로 규약
+
+```
+~/.luxon/data/ticks/{exchange}/{symbol}/{YYYY-MM-DD}.pkl
+```
+
+### 🔧 환경 변수
+
+| 변수 | 기본값 | 설명 |
+|---|---|---|
+| `LUXON_TICK_DATA_DIR` | `~/.luxon/data/ticks` | 틱 저장 루트 |
+| `LUXON_TICK_RETENTION_DAYS` | `30` | 보존 기간 (일) |
+| `LUXON_TICK_FLUSH_INTERVAL` | `5.0` | 자동 flush 주기 (초) |
+
+### 🚀 사용 예시
+
+```python
+from kis_backtest.luxon.stream.tick_vault import TickVault
+from kis_backtest.luxon.stream.upbit_tick_tap import UpbitTickTap
+from kis_backtest.providers.upbit.websocket import UpbitWebSocket
+
+vault = TickVault()
+ws = UpbitWebSocket()
+tap = UpbitTickTap(vault, ws)
+await tap.run(codes=["KRW-BTC"], message_type="trade", duration_seconds=60)
+vault.flush_all()
+```
+
+### ✅ Sprint 3 DoD 체크리스트
+
+- [ ] `TickVault` 5 메서드 구현 + 컨텍스트 매니저 지원
+- [ ] KIS/Upbit Tap 2종 각 async 런 검증
+- [ ] `TickReplayer` 동기/비동기 양쪽 경로 단위 테스트
+- [ ] 환경 변수 3종 override 테스트
+- [ ] Retention `prune()` 일자 경계 테스트
+- [ ] 기존 730+ 회귀 0 유지
+- [ ] 네이밍 레지스트리: [`luxon/naming_registry_sprint3.md`](./naming_registry_sprint3.md)
+
+### 🛡️ 수정 금지 영역
+
+Sprint 3 작업 범위 밖 — **절대 손대지 말 것**:
+
+- `providers/kis/` — KIS WebSocket/REST 원본
+- `providers/upbit/` — Upbit WebSocket/REST 원본
+- `execution/*` — 주문 실행 레이어 전체
+- `core/pipeline.py` — QuantPipeline 코어
+
+---
+
 ## 🗺️ 전체 로드맵 (Phase 1~7 / Sprint 1~30.5)
 
 - **Phase 1 재료 준비** (Sprint 1-4) — Data Foundation ← **현재**

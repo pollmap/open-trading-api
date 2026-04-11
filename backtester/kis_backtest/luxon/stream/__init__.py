@@ -20,17 +20,22 @@ Luxon Terminal — Maven 레이어 (실시간 데이터 스트리밍)
 
 from kis_backtest.luxon.stream.schema import (
     CacheEntry,
+    Exchange,
     FredPoint,
     FredSeries,
     FredSeriesId,
     FredSeriesMeta,
     FredSource,
+    ReplaySpec,
     SeriesCategory,
     StalenessReport,
+    TickMeta,
+    TickPoint,
     TransformType,
 )
 
 __all__ = [
+    # FRED
     "FredSeriesId",
     "TransformType",
     "FredSource",
@@ -40,4 +45,9 @@ __all__ = [
     "FredSeries",
     "CacheEntry",
     "StalenessReport",
+    # TickVault (Sprint 3)
+    "Exchange",
+    "TickPoint",
+    "TickMeta",
+    "ReplaySpec",
 ]
