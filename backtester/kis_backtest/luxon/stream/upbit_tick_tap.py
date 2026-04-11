@@ -144,46 +144,67 @@ class UpbitTickTap:
                 max_ticks/duration_seconds 중 먼저 도달하는 쪽으로 멈춤
 
         종료 조건이 None/None이면 외부에서 task.cancel()로 중단 가능.
+
+        [FIX Sprint4 M1] Python 3.12+에서 ``asyncio.get_event_loop()``는
+        실행 중 루프가 없으면 DeprecationWarning이다. ``run()``은 항상
+        실행 중 루프 안에서 호출되므로 ``get_running_loop()``가 정석.
+
+        [FIX Sprint4 M2] 외부에서 ``task.cancel()``로 중단될 때
+        ``asyncio.CancelledError``는 ``BaseException`` 계열이라 아래의
+        ``except Exception`` 블록에 걸리지 않아 기능적 버그는 없지만,
+        명시적으로 catch → 수집 통계 로그 → re-raise 해서 취소 cleanup
+        흐름을 관측 가능하게 만든다. Luxon 데몬(Sprint 1.5)이 24/7
+        반복 재시작될 때 마지막 세션 상태를 로그로 남겨 R11 같은
+        silent-fail 재발을 막는 장치.
         """
-        start = asyncio.get_event_loop().time()
+        loop = asyncio.get_running_loop()
+        start = loop.time()
 
-        async for msg in self.ws.subscribe(type=message_type, codes=codes):
-            try:
-                tick = upbit_msg_to_tick(msg)
-            except Exception as e:
-                self.error_count += 1
-                logger.warning(
-                    "UpbitTickTap 변환 실패 code=%s err=%s",
-                    msg.get("code", "?"),
-                    e,
-                )
-                continue
+        try:
+            async for msg in self.ws.subscribe(type=message_type, codes=codes):
+                try:
+                    tick = upbit_msg_to_tick(msg)
+                except Exception as e:
+                    self.error_count += 1
+                    logger.warning(
+                        "UpbitTickTap 변환 실패 code=%s err=%s",
+                        msg.get("code", "?"),
+                        e,
+                    )
+                    continue
 
-            try:
-                self.vault.append(tick)
-            except Exception as e:
-                self.error_count += 1
-                logger.warning(
-                    "UpbitTickTap append 실패 code=%s err=%s", tick.symbol, e
-                )
-                continue
+                try:
+                    self.vault.append(tick)
+                except Exception as e:
+                    self.error_count += 1
+                    logger.warning(
+                        "UpbitTickTap append 실패 code=%s err=%s", tick.symbol, e
+                    )
+                    continue
 
-            self.tick_count += 1
+                self.tick_count += 1
 
-            if max_ticks is not None and self.tick_count >= max_ticks:
-                logger.info(
-                    "UpbitTickTap 종료: max_ticks=%d 도달", max_ticks
-                )
-                break
-
-            if duration_seconds is not None:
-                elapsed = asyncio.get_event_loop().time() - start
-                if elapsed >= duration_seconds:
+                if max_ticks is not None and self.tick_count >= max_ticks:
                     logger.info(
-                        "UpbitTickTap 종료: duration_seconds=%.1f 도달",
-                        duration_seconds,
+                        "UpbitTickTap 종료: max_ticks=%d 도달", max_ticks
                     )
                     break
+
+                if duration_seconds is not None:
+                    elapsed = loop.time() - start
+                    if elapsed >= duration_seconds:
+                        logger.info(
+                            "UpbitTickTap 종료: duration_seconds=%.1f 도달",
+                            duration_seconds,
+                        )
+                        break
+        except asyncio.CancelledError:
+            logger.info(
+                "UpbitTickTap 취소됨: tick_count=%d error_count=%d",
+                self.tick_count,
+                self.error_count,
+            )
+            raise
 
     def stats(self) -> dict[str, Any]:
         return {

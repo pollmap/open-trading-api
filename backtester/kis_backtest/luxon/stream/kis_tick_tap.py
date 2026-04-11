@@ -44,6 +44,32 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _safe_float(value: Any, field_name: str) -> float:
+    """RealtimePrice 숫자 필드를 방어적으로 float 변환.
+
+    [FIX Sprint4 M7] providers/kis/websocket.RealtimePrice는 KIS 서버
+    원본 문자열을 파싱한 결과인데, 과거 장애 중 간헐적으로 price가
+    str("")이나 None으로 들어온 사례가 있었다. 현재 providers 코드는
+    기본값을 0으로 돌리지만, Sprint 3의 tap은 래퍼라 providers를
+    수정하지 못하므로 변환 경계에서 **명시적 타입 검증**을 한다.
+
+    Raises:
+        ValueError: 변환 실패 또는 NaN/Inf
+    """
+    if value is None:
+        raise ValueError(f"{field_name}=None (RealtimePrice 필드 누락)")
+    try:
+        f = float(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError(
+            f"{field_name}={value!r} float 변환 실패: {e}"
+        ) from e
+    # NaN/Inf 방어 — PyObject NaN은 자기 자신과 !=
+    if f != f or f in (float("inf"), float("-inf")):
+        raise ValueError(f"{field_name}={value!r} NaN/Inf 불허")
+    return f
+
+
 def kis_realtime_price_to_tick(
     symbol: str,
     rt_price: "RealtimePrice",
@@ -60,7 +86,7 @@ def kis_realtime_price_to_tick(
         trade_date: 체결일. None이면 date.today() (KST 서버 시각 가정)
 
     Raises:
-        ValueError: HHMMSS 파싱 실패 또는 가격이 0 이하
+        ValueError: HHMMSS 파싱 실패, 필수 필드 변환 실패, 가격이 0 이하
     """
     if trade_date is None:
         trade_date = date.today()
@@ -81,22 +107,44 @@ def kis_realtime_price_to_tick(
 
     timestamp = datetime.combine(trade_date, time(hh, mm, ss))
 
-    # bid/ask 0은 "데이터 없음"으로 처리 (주문 공백)
-    bid = float(rt_price.bid_price) if rt_price.bid_price > 0 else None
-    ask = float(rt_price.ask_price) if rt_price.ask_price > 0 else None
+    # [FIX Sprint4 M7] 필수 필드는 방어적 변환, 옵셔널 필드는 관대하게.
+    last = _safe_float(rt_price.price, "price")
+
+    # bid/ask 0은 "데이터 없음"으로 처리 (주문 공백). 변환 실패 시에도
+    # None으로 떨궈서 체결 틱 전체를 drop하지 않음 (데이터 보존 우선).
+    bid: float | None
+    try:
+        bid_raw = _safe_float(rt_price.bid_price, "bid_price")
+        bid = bid_raw if bid_raw > 0 else None
+    except ValueError:
+        bid = None
+
+    ask: float | None
+    try:
+        ask_raw = _safe_float(rt_price.ask_price, "ask_price")
+        ask = ask_raw if ask_raw > 0 else None
+    except ValueError:
+        ask = None
+
+    volume: float | None
+    try:
+        vol_raw = _safe_float(rt_price.volume, "volume")
+        volume = vol_raw if vol_raw >= 0 else None
+    except ValueError:
+        volume = None
 
     return TickPoint(
         timestamp=timestamp,
         symbol=symbol,
         exchange=Exchange.KIS,
-        last=float(rt_price.price),
+        last=last,
         bid=bid,
         ask=ask,
-        volume=float(rt_price.volume) if rt_price.volume >= 0 else None,
+        volume=volume,
         extra=(
-            ("change_sign", rt_price.change_sign),
-            ("change_rate", rt_price.change_rate),
-            ("total_volume", rt_price.total_volume),
+            ("change_sign", str(rt_price.change_sign)),
+            ("change_rate", str(rt_price.change_rate)),
+            ("total_volume", str(rt_price.total_volume)),
         ),
     )
 

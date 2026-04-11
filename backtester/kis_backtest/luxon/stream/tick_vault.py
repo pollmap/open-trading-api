@@ -43,6 +43,14 @@ _TICK_BUNDLE_VERSION = 1
 _DEFAULT_RETENTION_DAYS = 90
 _DEFAULT_FLUSH_INTERVAL = 50
 
+# [FIX Sprint4 M6] 단일 일별 파일 틱 수 상한.
+# Upbit KRW-BTC 같은 고빈도 종목은 장중 수십만 틱이 나오는데, pickle은
+# 전체 리스트를 매 flush마다 재직렬화하므로 파일이 커질수록 I/O 비용이
+# O(n)로 증가한다. 이 임계치를 넘으면 (1) warning 로그로 알리고
+# (2) Phase 4 ClickHouse 마이그레이션 필요 시그널로 사용. 하드 차단은
+# 안 함 — 실데이터 유실 방지가 최우선 원칙.
+_TICK_PER_FILE_WARN = 100_000
+
 
 def _default_tick_dir() -> Path:
     """틱 저장 루트 디렉토리 (env override 지원)."""
@@ -225,8 +233,26 @@ class TickVault:
             len(ticks),
         )
 
-        # 버퍼 비움
-        self._buffers[key].clear()
+        # [FIX Sprint4 M6] 단일 파일 틱 수 상한 경고.
+        # 장중 고빈도 종목은 10만 틱을 쉽게 넘고, 그 시점부터 pickle
+        # 재직렬화 비용이 급증. 중복 경고 방지를 위해 "막 상한을 넘긴
+        # 순간" 1회만 발생시킨다.
+        prev_count = len(merged) - len(ticks)
+        if prev_count < _TICK_PER_FILE_WARN <= len(merged):
+            logger.warning(
+                "TickVault: 단일 파일 틱 수가 %d 초과 (path=%s, count=%d). "
+                "Phase 4 ClickHouse 마이그레이션 시그널.",
+                _TICK_PER_FILE_WARN,
+                path,
+                len(merged),
+            )
+
+        # [FIX Sprint4 M3] defaultdict(list)의 ``.clear()``는 빈 리스트를 남겨
+        # 엔트리 자체는 유지된다. 장시간 운영 시 (심볼 수천 개, 일자 경계
+        # 통과) ``len(self._buffers)``가 영원히 증가해 ``stats()`` 수치가
+        # 부정확해지고 잠재적 메모리 누수. ``pop()``으로 키까지 제거해서
+        # buffered_keys가 항상 실제 flush 대기 중인 키 수만 반영하도록 함.
+        self._buffers.pop(key, None)
 
         return TickMeta(
             exchange=exchange,
@@ -263,10 +289,30 @@ class TickVault:
         return last_meta
 
     def flush_all(self) -> list[TickMeta]:
-        """전체 버퍼 flush. 세션 종료 시 호출 필수."""
+        """전체 버퍼 flush. 세션 종료 시 호출 필수.
+
+        [FIX Sprint4 M5] 키 1개에서 디스크 I/O 예외가 터져도 나머지 키는
+        계속 flush 되어야 한다. 과거 구현은 ``_flush_key``가 raise하면
+        뒤쪽 키들이 영원히 메모리에 고립되었다 (Sprint 1.5 luxon_macro_daemon
+        24/7 운영 중 치명적). 키별 try/except로 부분 실패를 격리하고
+        실패 키는 경고 로그 후 다음 flush 루프에서 재시도되도록 버퍼에
+        그대로 남겨둔다(``_flush_key``가 예외 전 ``pop``하지 않음).
+        """
         metas: list[TickMeta] = []
         for k in list(self._buffers.keys()):
-            meta = self._flush_key(k)
+            try:
+                meta = self._flush_key(k)
+            except Exception as e:
+                exchange, symbol, day = k
+                logger.warning(
+                    "TickVault flush_all 부분 실패 key=%s/%s/%s err=%s "
+                    "(재시도 대기)",
+                    exchange.value,
+                    symbol,
+                    day.isoformat(),
+                    e,
+                )
+                continue
             if meta is not None:
                 metas.append(meta)
         return metas
@@ -423,13 +469,25 @@ class TickVault:
 
         today = date.today()
         deleted = 0
+        # [FIX Sprint4 M4] symlink 가드.
+        # ``Path.is_dir()``의 기본값은 symlink follow라서, 누군가
+        # ``~/.luxon/data/ticks/KIS``를 ``/tmp/anything``으로 symlink
+        # 걸어두면 ``prune()``이 엉뚱한 디렉토리의 .pkl을 삭제할 수
+        # 있다. Python 3.12+의 ``follow_symlinks=False``로 **실제 디렉토리
+        # 엔트리만** 대상으로 삼아 링크 체인을 차단한다. 추가로 파일
+        # 삭제 전에도 ``pkl.is_symlink()``를 검사해서 심볼릭 pkl은 스킵.
         for exchange_dir in self._root.iterdir():
-            if not exchange_dir.is_dir():
+            if not exchange_dir.is_dir(follow_symlinks=False):
                 continue
             for symbol_dir in exchange_dir.iterdir():
-                if not symbol_dir.is_dir():
+                if not symbol_dir.is_dir(follow_symlinks=False):
                     continue
                 for pkl in symbol_dir.glob("*.pkl"):
+                    if pkl.is_symlink():
+                        logger.warning(
+                            "TickVault prune: symlink 스킵 path=%s", pkl
+                        )
+                        continue
                     try:
                         d = date.fromisoformat(pkl.stem)
                     except ValueError:
