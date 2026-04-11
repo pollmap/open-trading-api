@@ -128,7 +128,7 @@ INDICATOR_DEFINITIONS: List[Dict[str, str]] = [
     {"name": "기준금리", "source": "ECOS", "tool": "ecos_get_base_rate", "unit": "%"},
     {"name": "CPI (소비자물가)", "source": "ECOS", "tool": "ecos_get_stat_data", "unit": "%"},
     {"name": "GDP 성장률", "source": "ECOS", "tool": "ecos_get_gdp", "unit": "%"},
-    {"name": "M2 통화량", "source": "ECOS", "tool": "ecos_get_m2", "unit": "조원"},
+    {"name": "M2 통화량", "source": "ECOS", "tool": "ecos_get_stat_data", "unit": "조원"},
     {"name": "실업률", "source": "ECOS", "tool": "ecos_get_stat_data", "unit": "%"},
     {"name": "미국 기준금리", "source": "FRED", "tool": "macro_fred", "unit": "%"},
     {"name": "미국 CPI", "source": "FRED", "tool": "macro_fred", "unit": "%"},
@@ -138,30 +138,45 @@ INDICATOR_DEFINITIONS: List[Dict[str, str]] = [
 ]
 
 # ECOS MCP 도구 호출 설정 (지표별 전용 도구 + 파라미터)
-# GDP/M2/환율은 전용 도구, CPI/실업률은 범용 ecos_get_stat_data
+#
+# 2026-04-11 Sprint 2.5 최종 수정:
+# `ecos_search_stat_list` 검색으로 searchable=Y 실제 stat_code 확보.
+# `ecos_list_indicators` 카탈로그는 메타데이터이고 실제 searchable 통계와 불일치.
+#
+# 올바른 값 (ecos_search_stat_list 검증):
+#   - CPI:    stat_code=901Y009, item_code=0         ("총지수")
+#   - M2:     stat_code=161Y005, item_code=BBHS00    ("M2(평잔,계절조정계열)")
+#   - 실업률: stat_code=902Y021, item_code=KOR       ("국제 주요국 실업률" 중 한국)
+#
+# `ecos_get_stat_data`는 end_date 파라미터 사실상 필수 (기본값 동작 안함).
+# _fetch_ecos_indicator가 호출 시점의 오늘 YYYYMM을 동적으로 주입.
 _ECOS_INDICATOR_CONFIG: Dict[str, Dict[str, Any]] = {
     "CPI (소비자물가)": {
         "tool": "ecos_get_stat_data",
         "args": {
-            "stat_code": "021Y125",
+            "stat_code": "901Y009",
             "item_code": "0",
-            "start_date": "202001",
+            "start_date": "202301",
         },
     },
     "GDP 성장률": {
         "tool": "ecos_get_gdp",
-        "args": {},  # 기본값: 10년 전 ~ 최신
+        "args": {},  # 전용 도구 정상 동작 확인 (2026-04-11)
     },
     "M2 통화량": {
-        "tool": "ecos_get_m2",
-        "args": {},  # 기본값: 5년 전 ~ 최신
+        "tool": "ecos_get_stat_data",
+        "args": {
+            "stat_code": "161Y005",   # M2 상품별 구성내역(평잔, 계절조정계열)
+            "item_code": "BBHS00",    # M2(평잔,계절조정계열)
+            "start_date": "202501",
+        },
     },
     "실업률": {
         "tool": "ecos_get_stat_data",
         "args": {
-            "stat_code": "028Y015",
-            "item_code": "I81A",
-            "start_date": "202001",
+            "stat_code": "902Y021",   # 국제 주요국 실업률(계절변동조정)
+            "item_code": "KOR",       # 한국
+            "start_date": "202501",
         },
     },
     "원/달러 환율": {
@@ -300,14 +315,23 @@ class MacroRegimeDashboard:
     async def _fetch_ecos_indicator(
         self, mcp: MCPDataProvider, name: str, config: Dict[str, Any]
     ) -> None:
-        """ECOS 지표 수집 (2026-04-11 Sprint 2 수정).
+        """ECOS 지표 수집 (2026-04-11 Sprint 2 + 2.5 수정).
 
         기존 `ecos_get_indicator`는 Nexus MCP 미등록 도구였음 (R11 silent fail).
-        실제로는 지표별 전용 도구(get_gdp/get_m2/get_exchange_rate)
-        또는 범용 `ecos_get_stat_data` 사용. config에 tool과 args를 분리 저장.
+        실제로는 지표별 전용 도구(get_gdp/get_exchange_rate) 또는
+        범용 `ecos_get_stat_data` 사용. config에 tool과 args를 분리 저장.
+
+        Sprint 2.5 추가: `ecos_get_stat_data`는 `end_date` 파라미터가
+        사실상 필수(기본값 동작 안함). 호출 시점의 오늘 YYYYMM을 동적 주입.
         """
         tool = config.get("tool", "ecos_get_stat_data")
-        args = config.get("args", {})
+        args = dict(config.get("args", {}))  # 복사본 (원본 불변)
+
+        # ecos_get_stat_data는 end_date 없으면 빈 응답 → 오늘 YYYYMM 자동 주입
+        if tool == "ecos_get_stat_data" and "end_date" not in args:
+            today = datetime.now().date()
+            args["end_date"] = f"{today.year}{today.month:02d}"
+
         try:
             result = await mcp._call_vps_tool(tool, args)
             # MCP 서버 에러 문자열 감지 ({"success": true, "data": "Unknown tool: ..."})
