@@ -6,6 +6,9 @@
 from kis_backtest.luxon.graph.edges import EdgeKind, GraphEdge
 from kis_backtest.luxon.graph.graph import GothamGraph
 from kis_backtest.luxon.graph.ingestors.catalyst_ingestor import CatalystIngestor
+from kis_backtest.luxon.graph.ingestors.correlated_ingestor import (
+    CorrelatedIngestor,
+)
 from kis_backtest.luxon.graph.ingestors.cufa_ingestor import (
     CufaIngestor,
     CufaReportDigest,
@@ -26,6 +29,7 @@ __all__ = [
     "make_node_id",
     "Phase1Ingestor",
     "CatalystIngestor",
+    "CorrelatedIngestor",
     "CufaIngestor",
     "CufaReportDigest",
     "render_graph_html",
