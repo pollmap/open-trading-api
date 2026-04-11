@@ -116,26 +116,58 @@ class MacroIndicator:
 
 
 # 10대 거시지표 정의
+#
+# 2026-04-11 Sprint 2 수정 (R11 silent-fail 버그 수리):
+# 기존 `ecos_get_indicator`와 `fred_get_series`는 Nexus MCP에 등록되지 않은
+# 도구였음 (2일간 try/except가 실패를 삼켜 "검증 완료" 잘못 기록).
+# 실제 nexus MCP `discover_tools()` 결과:
+#   - ECOS: ecos_get_base_rate / ecos_get_gdp / ecos_get_m2 / ecos_get_exchange_rate
+#           / ecos_get_stat_data (범용)
+#   - FRED: macro_fred (유일)
 INDICATOR_DEFINITIONS: List[Dict[str, str]] = [
     {"name": "기준금리", "source": "ECOS", "tool": "ecos_get_base_rate", "unit": "%"},
-    {"name": "CPI (소비자물가)", "source": "ECOS", "tool": "ecos_get_indicator", "unit": "%"},
-    {"name": "GDP 성장률", "source": "ECOS", "tool": "ecos_get_indicator", "unit": "%"},
-    {"name": "M2 통화량", "source": "ECOS", "tool": "ecos_get_indicator", "unit": "조원"},
-    {"name": "실업률", "source": "ECOS", "tool": "ecos_get_indicator", "unit": "%"},
-    {"name": "미국 기준금리", "source": "FRED", "tool": "fred_get_series", "unit": "%"},
-    {"name": "미국 CPI", "source": "FRED", "tool": "fred_get_series", "unit": "%"},
-    {"name": "원/달러 환율", "source": "ECOS", "tool": "ecos_get_indicator", "unit": "원"},
-    {"name": "유가 (WTI)", "source": "FRED", "tool": "fred_get_series", "unit": "USD"},
-    {"name": "신용스프레드", "source": "FRED", "tool": "fred_get_series", "unit": "bp"},
+    {"name": "CPI (소비자물가)", "source": "ECOS", "tool": "ecos_get_stat_data", "unit": "%"},
+    {"name": "GDP 성장률", "source": "ECOS", "tool": "ecos_get_gdp", "unit": "%"},
+    {"name": "M2 통화량", "source": "ECOS", "tool": "ecos_get_m2", "unit": "조원"},
+    {"name": "실업률", "source": "ECOS", "tool": "ecos_get_stat_data", "unit": "%"},
+    {"name": "미국 기준금리", "source": "FRED", "tool": "macro_fred", "unit": "%"},
+    {"name": "미국 CPI", "source": "FRED", "tool": "macro_fred", "unit": "%"},
+    {"name": "원/달러 환율", "source": "ECOS", "tool": "ecos_get_exchange_rate", "unit": "원"},
+    {"name": "유가 (WTI)", "source": "FRED", "tool": "macro_fred", "unit": "USD"},
+    {"name": "신용스프레드", "source": "FRED", "tool": "macro_fred", "unit": "bp"},
 ]
 
-# MCP 도구 호출 매핑
-_ECOS_INDICATOR_ARGS: Dict[str, Dict[str, Any]] = {
-    "CPI (소비자물가)": {"stat_code": "021Y125", "item_code": "0"},
-    "GDP 성장률": {"stat_code": "200Y002", "item_code": "10111"},
-    "M2 통화량": {"stat_code": "101Y003", "item_code": "BBHS00"},
-    "실업률": {"stat_code": "028Y015", "item_code": "I81A"},
-    "원/달러 환율": {"stat_code": "036Y001", "item_code": "0000001"},
+# ECOS MCP 도구 호출 설정 (지표별 전용 도구 + 파라미터)
+# GDP/M2/환율은 전용 도구, CPI/실업률은 범용 ecos_get_stat_data
+_ECOS_INDICATOR_CONFIG: Dict[str, Dict[str, Any]] = {
+    "CPI (소비자물가)": {
+        "tool": "ecos_get_stat_data",
+        "args": {
+            "stat_code": "021Y125",
+            "item_code": "0",
+            "start_date": "202001",
+        },
+    },
+    "GDP 성장률": {
+        "tool": "ecos_get_gdp",
+        "args": {},  # 기본값: 10년 전 ~ 최신
+    },
+    "M2 통화량": {
+        "tool": "ecos_get_m2",
+        "args": {},  # 기본값: 5년 전 ~ 최신
+    },
+    "실업률": {
+        "tool": "ecos_get_stat_data",
+        "args": {
+            "stat_code": "028Y015",
+            "item_code": "I81A",
+            "start_date": "202001",
+        },
+    },
+    "원/달러 환율": {
+        "tool": "ecos_get_exchange_rate",
+        "args": {"currency": "USD"},
+    },
 }
 
 _FRED_SERIES_MAP: Dict[str, str] = {
@@ -238,17 +270,19 @@ class MacroRegimeDashboard:
     async def fetch_indicators(self, mcp: MCPDataProvider) -> Dict[str, MacroIndicator]:
         """MCP를 통해 전체 지표 수집
 
-        ECOS 18도구 + FRED 24도구에서 10대 지표를 가져온다.
-        실패한 지표는 이전 값을 유지.
+        Nexus MCP 실제 도구 이름 (2026-04-11 Sprint 2 수정):
+            ECOS: ecos_get_base_rate / gdp / m2 / exchange_rate / stat_data
+            FRED: macro_fred
+        실패한 지표는 이전 값 유지 (try/except로 graceful degradation).
         """
-        # 기준금리 (전용 도구)
+        # 기준금리 (전용 도구 get_risk_free_rate → 내부적으로 ecos_get_base_rate)
         await self._fetch_base_rate(mcp)
 
-        # ECOS 지표들
-        for name, args in _ECOS_INDICATOR_ARGS.items():
-            await self._fetch_ecos_indicator(mcp, name, args)
+        # ECOS 지표들 (지표별 전용 도구 또는 범용 stat_data)
+        for name, config in _ECOS_INDICATOR_CONFIG.items():
+            await self._fetch_ecos_indicator(mcp, name, config)
 
-        # FRED 지표들
+        # FRED 지표들 (macro_fred 통일)
         for name, series_id in _FRED_SERIES_MAP.items():
             await self._fetch_fred_series(mcp, name, series_id)
 
@@ -264,33 +298,56 @@ class MacroRegimeDashboard:
             logger.warning("기준금리 수집 실패: %s", e)
 
     async def _fetch_ecos_indicator(
-        self, mcp: MCPDataProvider, name: str, args: Dict[str, Any]
+        self, mcp: MCPDataProvider, name: str, config: Dict[str, Any]
     ) -> None:
-        """ECOS 일반 지표 수집"""
+        """ECOS 지표 수집 (2026-04-11 Sprint 2 수정).
+
+        기존 `ecos_get_indicator`는 Nexus MCP 미등록 도구였음 (R11 silent fail).
+        실제로는 지표별 전용 도구(get_gdp/get_m2/get_exchange_rate)
+        또는 범용 `ecos_get_stat_data` 사용. config에 tool과 args를 분리 저장.
+        """
+        tool = config.get("tool", "ecos_get_stat_data")
+        args = config.get("args", {})
         try:
-            result = await mcp._call_vps_tool("ecos_get_indicator", args)
+            result = await mcp._call_vps_tool(tool, args)
+            # MCP 서버 에러 문자열 감지 ({"success": true, "data": "Unknown tool: ..."})
+            if isinstance(result, dict) and isinstance(result.get("data"), str):
+                logger.warning(
+                    "ECOS %s MCP 서버 에러 (%s): %s", name, tool, result["data"]
+                )
+                return
             value = _extract_numeric_value(result)
             if value is not None:
                 self.update_indicator(name, value)
         except Exception as e:
-            logger.warning("ECOS %s 수집 실패: %s", name, e)
+            logger.warning("ECOS %s 수집 실패 (%s): %s", name, tool, e)
 
     async def _fetch_fred_series(
         self, mcp: MCPDataProvider, name: str, series_id: str
     ) -> None:
-        """FRED 시리즈 수집"""
+        """FRED 시리즈 수집 (2026-04-11 Sprint 2 수정).
+
+        기존 `fred_get_series`는 Nexus MCP 미등록 도구였음 (R11 silent fail).
+        실제 이름은 `macro_fred` (nexus-finance MCP 398도구 중 하나).
+        """
         try:
             result = await mcp._call_vps_tool(
-                "fred_get_series",
+                "macro_fred",
                 {"series_id": series_id, "limit": 2},
             )
+            # MCP 서버 에러 문자열 감지
+            if isinstance(result, dict) and isinstance(result.get("data"), str):
+                logger.warning(
+                    "FRED %s MCP 서버 에러 (macro_fred): %s", name, result["data"]
+                )
+                return
             values = _extract_fred_values(result)
             if values:
                 current = values[-1]
                 prev = values[-2] if len(values) >= 2 else None
                 self.update_indicator(name, current, prev)
         except Exception as e:
-            logger.warning("FRED %s 수집 실패: %s", name, e)
+            logger.warning("FRED %s 수집 실패 (macro_fred): %s", name, e)
 
     # ── 시그널 계산 ──────────────────────────────────────────
 
