@@ -42,6 +42,16 @@ export function Header() {
               </div>
             </Link>
 
+            {/* 네비게이션 */}
+            <nav className="hidden sm:flex items-center gap-4">
+              <Link href="/" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                Backtest
+              </Link>
+              <Link href="/luxon" className="text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                Luxon
+              </Link>
+            </nav>
+
             {/* 우측: 인증 배지 + 설정 버튼 */}
             <div className="flex items-center gap-2">
               <span
