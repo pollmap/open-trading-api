@@ -1,219 +1,154 @@
-# Luxon Terminal — 1인 AI 헤지펀드 × AaaS 퀀트 OS
+# Luxon Terminal — 1인 AI 헤지펀드 개인 도구
 
-> 🎯 **"블룸버그 × 팔란티어 × 헤지펀드 Top-Tier 급 1인 운용 + SaaS 판매 듀얼 비즈니스"**
+> **871 tests** | **MCP 398 tools** | **GothamGraph 6/5** | **Phase 4 완료**
 
-**코드네임:** Luxon Terminal v0.1
-**기반:** `open-trading-api` v0.3α (730+ pytest, 15K+ LOC)
-**플랜 파일:** `C:\Users\lch68\.claude\plans\valiant-honking-simon.md` (~2,500 라인)
+기존 `portfolio/` 17 모듈 + Nexus MCP 398 도구 + GothamGraph 지식 그래프를 `orchestrator.py` 한 파일로 연결.
+터미널에서 한 줄 치면 **"이 종목 살까 말까 + 얼마나 + 왜"** 가 마크다운으로 나온다.
+
+```
+  찬희 터미널
+       │
+       ▼
+  LuxonOrchestrator.run_workflow(["005930", "000660", ...])
+       │
+       ├── ① MCP 매크로 지표 → regime="recovery" (100%)
+       ├── ② CUFA 보고서 자동 주입 → 인물/섹터/테마 노드
+       ├── ③ Ackman+Druckenmiller 평가 → BUY/SKIP 결정
+       ├── ④ Half-Kelly 포지션 사이징 → 20% / 20M KRW
+       ├── ⑤ GothamGraph 교차참조 → "HBM4 양산, 이재용, 반도체"
+       │
+       ▼
+  마크다운 리포트 + 주간 레터 + 그래프 HTML
+```
 
 ---
 
-## 📦 Sprint 1 — FRED Quick Win (완료)
-
-거시 10지표를 Nexus MCP(`fred_get_series`)에서 실시간 수집하여 다크테마 대시보드로 표시.
-
-### ✨ 특징
-
-- **MCP 우선** — `MCPDataProvider._call_vps_tool("fred_get_series", ...)` 주 경로, **FRED API 키 불필요**
-- **Parquet 캐시** — `~/.luxon/cache/fred/` 기본, 6시간 TTL
-- **10 거시 지표** — DGS10/DGS2/T10Y2Y/DFF/CPIAUCSL/UNRATE/M2SL/VIXCLS/DCOILWTICO/DEXKOUS
-- **다크 대시보드** — matplotlib 2×5 그리드, PNG + HTML 출력
-- **Staleness 감지** — daily 5영업일 / monthly 45일 / quarterly 100일 임계치
-- **실데이터 절대 원칙** — 목업 생성 금지, 빈 응답 시 예외
-
-### 🚀 사용법
-
-#### 빠른 실행 (스모크 스크립트)
+## 사용법
 
 ```bash
-cd C:\Users\lch68\Desktop\open-trading-api\backtester
-.venv\Scripts\python.exe scripts/smoke_sprint1.py --out ./out/macro_20260411.png --html ./out/macro_20260411.html
+cd backtester
+
+# 빠른 스냅샷 (3초, MCP 없음)
+.venv/Scripts/python.exe -m kis_backtest.luxon 005930 000660 035420
+
+# 상세 리포트 (20초, MCP + CUFA + 그래프)
+.venv/Scripts/python.exe scripts/luxon_run.py
+
+# 주간 레터 저장
+.venv/Scripts/python.exe -m kis_backtest.luxon \
+  --weekly ~/Desktop/luxon/letters/2026-W15.md 005930 000660
+
+# Task Scheduler 등록 (금요일 18:00 자동, 1회)
+PowerShell -ExecutionPolicy Bypass -File scripts/setup_luxon_scheduler.ps1
 ```
-
-결과:
-- `./out/macro_20260411.png` — 10 지표 다크 PNG 대시보드
-- `./out/macro_20260411.html` — 인터랙티브 HTML (PNG embed + 데이터 테이블)
-
-#### Python API
-
-```python
-import asyncio
-from pathlib import Path
-
-from kis_backtest.portfolio.mcp_data_provider import MCPDataProvider
-from kis_backtest.luxon.stream.fred_hub import FREDHub
-from kis_backtest.luxon.ui.macro_dashboard import MacroDashboard
-
-async def main():
-    mcp = MCPDataProvider()  # ~/.mcp.json에서 토큰 자동 로드
-    hub = FREDHub(mcp=mcp)
-
-    # 10개 시리즈 전체 로드
-    all_series = await hub.load_all()
-
-    # 다크 대시보드 렌더
-    dashboard = MacroDashboard()
-    dashboard.render_png(all_series, Path("./out/macro.png"))
-    dashboard.render_html(all_series, Path("./out/macro.html"))
-
-    # Staleness 점검
-    from kis_backtest.luxon.stream.schema import FredSeriesId
-    dgs10 = all_series[FredSeriesId.DGS10]
-    report = hub.detect_staleness(dgs10)
-    if report.is_stale:
-        print(f"⚠️ {dgs10.meta.label_ko} {report.business_days_stale}일 지연")
-
-asyncio.run(main())
-```
-
-### 🧪 테스트
-
-```bash
-cd C:\Users\lch68\Desktop\open-trading-api\backtester
-.venv\Scripts\python.exe -m pytest tests/luxon/ -v
-```
-
-- `test_fred_hub.py` — 8 테스트 (mock MCP)
-- `test_fred_cache.py` — 4 테스트 (Parquet 라운드트립)
-- `test_macro_dashboard.py` — 4 테스트 (렌더링)
-
-**총 16 테스트 + 기존 730+ 회귀 0 유지**
-
-### 📂 파일 구조
-
-```
-backtester/kis_backtest/luxon/
-├── __init__.py                     # 패키지 진입점
-├── README.md                       # ← 이 파일
-├── naming_registry_sprint1.md      # Sprint 1 네이밍 레지스트리 (SSOT)
-├── stream/                         # Maven 레이어 (실시간 데이터)
-│   ├── __init__.py
-│   ├── schema.py                   # 공유 타입 SSOT (8 타입)
-│   ├── series_registry.yaml        # 10 FRED 시리즈 카탈로그
-│   ├── fred_cache.py               # Parquet 캐시 (A3)
-│   └── fred_hub.py                 # FREDHub 메인 (A1, MCP 래퍼)
-├── ui/                             # UI 레이어
-│   ├── __init__.py
-│   └── macro_dashboard.py          # matplotlib 2×5 다크 대시보드 (A2)
-├── ontology/                       # Gotham 레이어 (Phase 2 예정)
-│   └── __init__.py
-└── intelligence/                   # AIP 레이어 (Phase 2 예정)
-    └── __init__.py
-```
-
-### 🏗️ 설계 원칙
-
-1. **기존 자산 무수정** — `portfolio/`, `execution/`, `providers/`, `core/pipeline.py` 수정 금지
-2. **MCP 우선** — fredapi 직접 통합 금지, Nexus MCP 398도구 주 경로
-3. **실데이터 절대** — 목업/가짜/할루시네이션 금지 (FredSeries.__post_init__에서 강제)
-4. **3중 리스크 게이트 우회 불가** — 주문 경로는 RiskGateway → KillSwitch → CapitalLadder (Sprint 1에선 주문 없음)
-5. **SSOT 스키마** — `schema.py`와 `series_registry.yaml`이 공유 타입의 단일 진실원
-6. **UX 원칙** — 블룸버그 밀도 × Apple 직관성 (플랜 섹션 6.6)
-
-### 🔗 기존 자산 재사용
-
-| Luxon 신규 | 기존 자산 | 재사용 방식 |
-|---|---|---|
-| `FREDHub` | `MCPDataProvider._call_vps_tool` | MCP 호출 패턴 100% |
-| `FREDHub` | `macro_regime._FRED_SERIES_MAP` | 도구 이름 + 시리즈 ID 패턴 |
-| `MacroDashboard` | (신규) | `report/themes/` 있으면 팔레트 재사용 예정 |
-
-### 📋 다음 단계 (Sprint 2)
-
-- ECOS Hub 추가 (한국 거시 지표)
-- `MacroRegimeDashboard`와 통합 (source="fred" 스위치)
-- CUFA 보고서 매크로 섹션에 FRED 데이터 주입
 
 ---
 
-## 📦 Sprint 3 — TickVault (실시간 틱 저장소)
+## 파일 구조
 
-일별 pickle 파일 기반 경량 틱 저장소. 이름은 Parquet을 유지하되 pyarrow 의존 0, 순수 표준 라이브러리로 동작.
+```
+kis_backtest/luxon/
+├── orchestrator.py              핵심 — 17모듈 조합 셸 + generate_weekly_letter
+├── __main__.py                  CLI: python -m kis_backtest.luxon
+├── graph/                       GothamGraph 지식 그래프
+│   ├── graph.py                   6노드/5엣지 + all_nodes/all_edges + 1-hop neighbors
+│   ├── nodes.py                   SYMBOL/SECTOR/EVENT/THEME/MACRO_REGIME/PERSON
+│   ├── edges.py                   BELONGS_TO/CATALYST_FOR/HOLDS/CORRELATED/TRIGGERED_BY
+│   ├── ingestors/
+│   │   ├── phase1_ingestor.py       주문제안 → EventNode
+│   │   ├── catalyst_ingestor.py     카탈리스트 → EventNode + CATALYST_FOR
+│   │   ├── cufa_ingestor.py         CUFA 보고서 → Person/Sector/Theme
+│   │   └── correlated_ingestor.py   종목 상관관계 → CORRELATED 엣지
+│   ├── parsers/
+│   │   └── cufa_html_parser.py      CUFA HTML → CufaReportDigest (symbol_hint fallback)
+│   └── viz/
+│       └── html_renderer.py         PyVis 0.3.2 시각화 → HTML
+├── stream/                      TickVault 틱데이터 저장소
+│   ├── tick_vault.py              일별 pickle, append/flush/load_day/prune
+│   ├── replay.py                  동기/비동기 재생
+│   └── ...
+└── integration/                 Phase1Pipeline 연결
+    └── ...
 
-### ✨ 특징
+scripts/
+├── luxon_run.py                 상세 리포트 (MCP 자동 + CUFA 주입 + 그래프)
+└── setup_luxon_scheduler.ps1    금요일 18:00 자동실행
 
-- **일별 pickle 저장** — 심볼당 하루 1파일, 플러시 주기 조절 가능
-- **Exchange 추상화** — KIS/Upbit 공통 `TickPoint` 스키마
-- **Context manager** — `with TickVault() as v:` 자동 flush
-- **Replay 지원** — 동기/비동기 재생, `speed`/`offset`/`limit` 옵션
-- **Retention 정책** — `prune()` 호출로 오래된 파일 자동 삭제
-- **Phase 4에서 ClickHouse로 교체 가능** — 인터페이스만 유지하면 백엔드 스왑 OK
+tests/luxon/                     135 tests green
+```
 
-### 🆕 새 모듈
+---
 
-| 파일 | 설명 |
+## GothamGraph 온톨로지
+
+```
+  6 노드                               5 엣지
+  SYMBOL   (종목)    ── BELONGS_TO ──→  SECTOR  (섹터)
+  EVENT    (이벤트)  ── CATALYST_FOR ─→  SYMBOL
+  PERSON   (인물)    ── HOLDS ────────→  SYMBOL
+  THEME    (테마)    ── CORRELATED ──↔  SYMBOL  (양방향)
+  MACRO    (매크로)  ── TRIGGERED_BY ─→  EVENT
+```
+
+---
+
+## 기존 자산 재사용 (portfolio/ 17 모듈)
+
+| 모듈 | Luxon 에서의 역할 |
 |---|---|
-| `stream/tick_vault.py` | `TickVault` 클래스 (append/flush/load_day/prune/context manager) |
-| `stream/kis_tick_tap.py` | `KISTickTap` (KIS WebSocket → TickPoint 콜백 어댑터) |
-| `stream/upbit_tick_tap.py` | `UpbitTickTap` (Upbit async generator → TickPoint) |
-| `stream/replay.py` | `TickReplayer` (동기/비동기 재생, speed/offset/limit) |
-| `stream/schema.py` 확장 | `TickPoint`, `TickMeta`, `Exchange`, `ReplaySpec` 타입 추가 |
+| `ackman_druckenmiller.py` | `evaluate_portfolio` — BUY/SKIP/HOLD 결정 |
+| `catalyst_tracker.py` | `add/score` — 카탈리스트 등록 + 점수 |
+| `conviction_sizer.py` | `size_position` — Half-Kelly 포지션 크기 |
+| `macro_regime.py` | `fetch_indicators` — MCP 매크로 지표 로드 |
+| `mcp_data_provider.py` | `health_check_sync` — Nexus MCP 398 도구 연결 |
+| `investor_letter.py` | 백테스트 리포트용 (Luxon 은 summary() 직접 사용) |
 
-### 📁 경로 규약
+---
 
-```
-~/.luxon/data/ticks/{exchange}/{symbol}/{YYYY-MM-DD}.pkl
-```
+## Sprint 히스토리
 
-### 🔧 환경 변수
-
-| 변수 | 기본값 | 설명 |
+| Sprint | 커밋 | 산출물 |
 |---|---|---|
-| `LUXON_TICK_DATA_DIR` | `~/.luxon/data/ticks` | 틱 저장 루트 |
-| `LUXON_TICK_RETENTION_DAYS` | `30` | 보존 기간 (일) |
-| `LUXON_TICK_FLUSH_INTERVAL` | `5.0` | 자동 flush 주기 (초) |
+| 1 | `58d6a3e` | FRED Macro Terminal + 24/7 Daemon |
+| 2-2.5 | `7b7fd72`~`7bb99b4` | MacroRegime R11 수리, 10/10 지표 복구 |
+| 3 | `49f4458` | TickVault pickle 기반 틱 저장소 |
+| 4 | `33ca958`~`ca527ec` | Phase1Pipeline + ConvictionBridge |
+| 5 | `b702685` | GothamGraph 6노드/5엣지 + 3-hop BFS |
+| 6 | `933fe61` | Catalyst/CUFA Ingestors + PyVis HTML |
+| 7 | `f026e8c` | CorrelatedIngestor (pandas.corr) |
+| 8 | `3079650` | CUFA HTML Parser (bs4 + heuristic) |
+| 9 | `53e5f22` | LuxonOrchestrator (17모듈 조합 셸) |
+| Action B/C/D | `e7b173d` | CLI + 실전 스크립트 + 주간 레터 |
+| MCP 통합 | `8250001` | regime confidence 0% → 100% |
+| CUFA 주입 | `417ac76` | Desktop 12개 보고서 자동 주입 |
+| 리뷰 수정 | `cbcce4a`~`a4c528f` | 코드 리뷰 7건 수정 |
 
-### 🚀 사용 예시
+---
 
-```python
-from kis_backtest.luxon.stream.tick_vault import TickVault
-from kis_backtest.luxon.stream.upbit_tick_tap import UpbitTickTap
-from kis_backtest.providers.upbit.websocket import UpbitWebSocket
+## 테스트
 
-vault = TickVault()
-ws = UpbitWebSocket()
-tap = UpbitTickTap(vault, ws)
-await tap.run(codes=["KRW-BTC"], message_type="trade", duration_seconds=60)
-vault.flush_all()
+```bash
+# Luxon 전용 (135 tests)
+.venv/Scripts/python.exe -m pytest tests/luxon/ -v
+
+# 전체 회귀 (871 tests)
+.venv/Scripts/python.exe -m pytest tests/ -x --tb=short
 ```
 
-### ✅ Sprint 3 DoD 체크리스트
+---
 
-- [ ] `TickVault` 5 메서드 구현 + 컨텍스트 매니저 지원
-- [ ] KIS/Upbit Tap 2종 각 async 런 검증
-- [ ] `TickReplayer` 동기/비동기 양쪽 경로 단위 테스트
-- [ ] 환경 변수 3종 override 테스트
-- [ ] Retention `prune()` 일자 경계 테스트
-- [ ] 기존 730+ 회귀 0 유지
-- [ ] 네이밍 레지스트리: [`luxon/naming_registry_sprint3.md`](./naming_registry_sprint3.md)
+## 설계 원칙
 
-### 🛡️ 수정 금지 영역
-
-Sprint 3 작업 범위 밖 — **절대 손대지 말 것**:
-
-- `providers/kis/` — KIS WebSocket/REST 원본
-- `providers/upbit/` — Upbit WebSocket/REST 원본
-- `execution/*` — 주문 실행 레이어 전체
-- `core/pipeline.py` — QuantPipeline 코어
+1. **기존 자산 무수정** — portfolio/, execution/, providers/ 수정 금지
+2. **MCP 우선** — 새 분석 함수 작성 전 Nexus MCP 398 도구 먼저 확인
+3. **포크 우선** — 새 모듈 작성 전 external library 후보 1-2분 검색
+4. **실데이터 절대** — 목업/가짜/할루시네이션 금지
+5. **300 LOC 상한** — 새 파일 신규 추가 시 초과 금지
+6. **개인 사용 전용** — SaaS/멀티유저/API화 금지 (상업화는 나중)
 
 ---
 
-## 🗺️ 전체 로드맵 (Phase 1~7 / Sprint 1~30.5)
+## 라이선스
 
-- **Phase 1 재료 준비** (Sprint 1-4) — Data Foundation ← **현재**
-- **Phase 2 초벌 조리** (Sprint 5-7) — Ontology + Intelligence
-- **Phase 3 플레이팅** (Sprint 8-10) — UI 킬러 데모
-- **Phase 4 글로벌 소싱** (Sprint 11-13) — CCXT/Tavily/Factor Zoo
-- **Phase 5 간 맞추기** (Sprint 14-17) — Risk/Quality/Attribution
-- **Phase 6 그랜드 오픈** (Sprint 18-24) — Hedge Fund Inc
-- **Phase 7 상용화** (Sprint 25-30) — AaaS 배포 + 판매
-
-**완성본:** Luxon Terminal AaaS — 1인 AI 헤지펀드가 운용하며 동시에 전 세계에 판매하는 듀얼 비즈니스 퀀트 OS 플랫폼.
-
----
-
-## 📝 라이선스 / 기여
-
-- 현재 비공개 (Phase 7 Tier 0에서 오픈소스 공개 예정)
-- 작성자: 이찬희 (Luxon AI 창업자, CUFA 회장)
-- 참조: [플랜 마스터 파일](C:\Users\lch68\.claude\plans\valiant-honking-simon.md)
+작성자: 이찬희 (Luxon AI 창업자, CUFA 회장)
+레포: [pollmap/open-trading-api](https://github.com/pollmap/open-trading-api)

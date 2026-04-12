@@ -1,6 +1,6 @@
 # Backtester — AI 퀀트 운용 시스템 v0.3α
 
-> **378 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | [ARCHITECTURE.md](ARCHITECTURE.md)
+> **871 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | **Luxon Terminal** | [ARCHITECTURE.md](ARCHITECTURE.md)
 
 한국투자증권 Open API 기반 **1인 AI 퀀트 운용 시스템**입니다.
 
