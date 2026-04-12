@@ -311,4 +311,70 @@ class LuxonOrchestrator:
         return path
 
 
+    # ── 주문 실행 ─────────────────────────────────────────
+
+    def execute_decisions(
+        self,
+        report: OrchestrationReport,
+        *,
+        brokerage: Any = None,
+        price_provider: Any = None,
+        mode: str = "paper",
+        dry_run: bool = True,
+        total_capital: float | None = None,
+    ) -> Any:
+        """분석 결과를 실제 주문으로 실행.
+
+        Args:
+            report: run_workflow 결과.
+            brokerage: BrokerageProvider (KISBrokerageProvider 등).
+            price_provider: PriceProvider (현재가 조회).
+            mode: "paper" (모의투자) 또는 "prod" (실전).
+            dry_run: True 면 주문 계획만 (기본), False 면 실제 주문.
+            total_capital: 투입 자본. None 이면 self.total_capital.
+
+        Returns:
+            ExecutionReport.
+
+        Raises:
+            RuntimeError: brokerage 또는 price_provider 미설정.
+        """
+        if brokerage is None or price_provider is None:
+            raise RuntimeError(
+                "execute_decisions 호출 시 brokerage + price_provider 필수. "
+                "KISBrokerageProvider 생성 후 전달하세요."
+            )
+        from .executor_bridge import ExecutorBridge
+
+        bridge = ExecutorBridge(
+            brokerage=brokerage,
+            price_provider=price_provider,
+            mode=mode,
+        )
+        capital = total_capital or self.total_capital
+        order = bridge.build_order(report, total_capital=capital)
+        return bridge.execute(order, dry_run=dry_run)
+
+    def run_and_execute(
+        self,
+        symbols: list[str],
+        base_convictions: dict[str, float] | None = None,
+        *,
+        brokerage: Any = None,
+        price_provider: Any = None,
+        mode: str = "paper",
+        dry_run: bool = True,
+    ) -> tuple[OrchestrationReport, Any]:
+        """run_workflow + execute_decisions 결합. 분석→실행 한 줄."""
+        report = self.run_workflow(symbols, base_convictions=base_convictions)
+        exec_report = self.execute_decisions(
+            report,
+            brokerage=brokerage,
+            price_provider=price_provider,
+            mode=mode,
+            dry_run=dry_run,
+        )
+        return report, exec_report
+
+
 __all__ = ["LuxonOrchestrator", "OrchestrationReport"]

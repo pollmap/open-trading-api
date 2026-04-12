@@ -38,7 +38,19 @@ def main() -> None:
     )
     parser.add_argument(
         "--weekly", type=str, default=None, metavar="PATH",
-        help="주간 레터를 지정 경로에 저장 (예: ~/Desktop/luxon/letters/2026-W15.md)",
+        help="주간 레터를 지정 경로에 저장",
+    )
+    parser.add_argument(
+        "--paper", action="store_true",
+        help="모의투자 주문 실행 (KIS 모의 계좌)",
+    )
+    parser.add_argument(
+        "--live", action="store_true",
+        help="실전 주문 실행 (위험! Y/n 승인 필요)",
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", default=False,
+        help="주문 계획만 보기 (실제 주문 X)",
     )
     args = parser.parse_args()
 
@@ -51,6 +63,21 @@ def main() -> None:
             args.symbols, args.weekly, base_convictions=convictions,
         )
         print(f"주간 레터 저장: {saved}")
+    elif args.paper or args.live:
+        from kis_backtest.providers.kis.brokerage import KISBrokerageProvider
+        mode = "prod" if args.live else "paper"
+        brokerage = KISBrokerageProvider()
+        report, exec_report = orch.run_and_execute(
+            args.symbols,
+            base_convictions=convictions,
+            brokerage=brokerage,
+            price_provider=brokerage,
+            mode=mode,
+            dry_run=args.dry_run,
+        )
+        print(report.summary())
+        print()
+        print(exec_report.summary() if hasattr(exec_report, "summary") else exec_report)
     else:
         report = orch.run_workflow(args.symbols, base_convictions=convictions)
         print(report.summary())
