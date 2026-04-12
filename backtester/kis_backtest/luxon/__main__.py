@@ -36,12 +36,24 @@ def main() -> None:
         "--conviction", type=float, default=5.0,
         help="모든 종목 기본 확신도 1-10 (기본 5.0)",
     )
+    parser.add_argument(
+        "--weekly", type=str, default=None, metavar="PATH",
+        help="주간 레터를 지정 경로에 저장 (예: ~/Desktop/luxon/letters/2026-W15.md)",
+    )
     args = parser.parse_args()
 
     orch = LuxonOrchestrator(total_capital=args.capital)
     convictions = {s: args.conviction for s in args.symbols}
-    report = orch.run_workflow(args.symbols, base_convictions=convictions)
-    print(report.summary())
+
+    if args.weekly:
+        from pathlib import Path
+        saved = orch.generate_weekly_letter(
+            args.symbols, args.weekly, base_convictions=convictions,
+        )
+        print(f"주간 레터 저장: {saved}")
+    else:
+        report = orch.run_workflow(args.symbols, base_convictions=convictions)
+        print(report.summary())
 
 
 if __name__ == "__main__":

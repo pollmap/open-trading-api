@@ -108,11 +108,19 @@ async def _main() -> None:
     print()
     print(report.summary())
 
+    # 주간 레터 자동 저장 (이미 계산된 report 재사용, 이중 호출 방지)
+    from datetime import datetime
+    week_tag = datetime.now().strftime("%Y-W%V")
+    letter_path = Path.home() / "Desktop" / "luxon" / "letters" / f"{week_tag}.md"
+    letter_path.parent.mkdir(parents=True, exist_ok=True)
+    letter_path.write_text(report.summary(), encoding="utf-8")
+    print(f"\n[letter] {letter_path}")
+
     # GothamGraph HTML 시각화 자동 생성
     graph_html = Path("out/luxon_watchlist.html")
     graph_html.parent.mkdir(parents=True, exist_ok=True)
     render_graph_html(orch.graph, str(graph_html), title="Luxon Watchlist")
-    print(f"\n[graph] file:///{graph_html.resolve().as_posix()}")
+    print(f"[graph] file:///{graph_html.resolve().as_posix()}")
 
 
 def main() -> None:

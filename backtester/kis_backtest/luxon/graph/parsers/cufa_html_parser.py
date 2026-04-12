@@ -54,17 +54,34 @@ class CufaHtmlParser:
     )
 
     def parse_file(self, path: str | Path) -> CufaReportDigest:
-        """파일 경로에서 파싱. UTF-8 로 읽음."""
+        """파일 경로에서 파싱. UTF-8 로 읽음.
+
+        타이틀에 종목코드가 없으면 파일 경로에서 6자리 코드를 추출해서 재시도.
+        """
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"CUFA HTML 파일 없음: {path}")
-        return self.parse_html(path.read_text(encoding="utf-8"))
+        html = path.read_text(encoding="utf-8")
+        try:
+            return self.parse_html(html)
+        except ValueError:
+            # fallback: 경로에서 6자리 종목코드 추출 (cufa_report_006800/ 등)
+            m = re.search(r"(\d{6})", str(path))
+            if m:
+                return self.parse_html(html, symbol_hint=m.group(1))
+            raise
 
-    def parse_html(self, html: str) -> CufaReportDigest:
+    def parse_html(
+        self, html: str, *, symbol_hint: str | None = None,
+    ) -> CufaReportDigest:
         """HTML 문자열에서 파싱.
 
+        Args:
+            html: CUFA 보고서 HTML 문자열.
+            symbol_hint: 타이틀에서 종목코드 추출 실패 시 사용할 fallback 코드.
+
         Raises:
-            ValueError: 타이틀에서 종목 코드 추출 실패.
+            ValueError: 타이틀에서 종목 코드 추출 실패 (hint 도 없을 때).
         """
         soup = BeautifulSoup(html, "html.parser")
 
@@ -75,12 +92,15 @@ class CufaHtmlParser:
         title_text = title_tag.get_text(strip=True)
 
         match = self._TITLE_PATTERN.search(title_text)
-        if not match:
+        if match:
+            symbol = match.group(2).strip()
+        elif symbol_hint:
+            symbol = symbol_hint
+        else:
             raise ValueError(
                 f"CUFA HTML 타이틀 형식 불일치 (회사명 (6자리코드) 필요): "
                 f"{title_text!r}"
             )
-        symbol = match.group(2).strip()
 
         # 2. 첫 section-title → sector + themes
         sector, themes = self._extract_sector_and_themes(soup)
