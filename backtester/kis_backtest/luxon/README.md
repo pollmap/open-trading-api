@@ -28,17 +28,26 @@
 ```bash
 cd backtester
 
-# 빠른 스냅샷 (3초, MCP 없음)
+# 1. 빠른 스냅샷 — 분석만 (3초, MCP 없음)
 .venv/Scripts/python.exe -m kis_backtest.luxon 005930 000660 035420
 
-# 상세 리포트 (20초, MCP + CUFA + 그래프)
+# 2. 상세 리포트 — MCP + CUFA + 그래프 (20초)
 .venv/Scripts/python.exe scripts/luxon_run.py
 
-# 주간 레터 저장
+# 3. 주간 레터 저장
 .venv/Scripts/python.exe -m kis_backtest.luxon \
   --weekly ~/Desktop/luxon/letters/2026-W15.md 005930 000660
 
-# Task Scheduler 등록 (금요일 18:00 자동, 1회)
+# 4. 모의투자 주문 계획 보기 (dry-run, 실제 주문 0)
+.venv/Scripts/python.exe -m kis_backtest.luxon --paper --dry-run 005930
+
+# 5. 모의투자 실행 (KIS 모의 계좌)
+.venv/Scripts/python.exe -m kis_backtest.luxon --paper 005930
+
+# 6. 실전 매매 (KIS 실 계좌, Y/n 승인)
+.venv/Scripts/python.exe -m kis_backtest.luxon --live 005930
+
+# 7. Task Scheduler 등록 (금요일 18:00 자동, 1회)
 PowerShell -ExecutionPolicy Bypass -File scripts/setup_luxon_scheduler.ps1
 ```
 
@@ -48,8 +57,9 @@ PowerShell -ExecutionPolicy Bypass -File scripts/setup_luxon_scheduler.ps1
 
 ```
 kis_backtest/luxon/
-├── orchestrator.py              핵심 — 17모듈 조합 셸 + generate_weekly_letter
-├── __main__.py                  CLI: python -m kis_backtest.luxon
+├── orchestrator.py              핵심 — 17모듈 조합 셸 + execute_decisions + weekly_letter
+├── executor_bridge.py           실행 어댑터 — OrchestrationReport → PortfolioOrder → KIS
+├── __main__.py                  CLI: python -m kis_backtest.luxon (--paper/--live)
 ├── graph/                       GothamGraph 지식 그래프
 │   ├── graph.py                   6노드/5엣지 + all_nodes/all_edges + 1-hop neighbors
 │   ├── nodes.py                   SYMBOL/SECTOR/EVENT/THEME/MACRO_REGIME/PERSON
