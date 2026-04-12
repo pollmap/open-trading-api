@@ -189,13 +189,16 @@ class Phase1Ingestor:
                     payload={"name": sector},
                 )
                 self._graph.add_node(sector_node)
-            belongs_edge = GraphEdge(
-                source_id=symbol_node_id,
-                target_id=sector_node_id,
-                kind=EdgeKind.BELONGS_TO,
-                weight=1.0,
-                timestamp=now,
-            )
-            self._graph.add_edge(belongs_edge)
+            if not self._graph.has_edge(
+                symbol_node_id, sector_node_id, EdgeKind.BELONGS_TO,
+            ):
+                belongs_edge = GraphEdge(
+                    source_id=symbol_node_id,
+                    target_id=sector_node_id,
+                    kind=EdgeKind.BELONGS_TO,
+                    weight=1.0,
+                    timestamp=now,
+                )
+                self._graph.add_edge(belongs_edge)
 
         return event_node_id

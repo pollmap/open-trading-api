@@ -143,10 +143,10 @@ def _collect_three_hop_ids(
     for _ in range(3):
         next_frontier: set[str] = set()
         for nid in frontier:
-            for edge in graph._adj_out.get(nid, []):
-                if edge.target_id not in visited:
-                    visited.add(edge.target_id)
-                    next_frontier.add(edge.target_id)
+            for neighbor in graph.neighbors(nid, direction="out"):
+                if neighbor.node_id not in visited:
+                    visited.add(neighbor.node_id)
+                    next_frontier.add(neighbor.node_id)
         frontier = next_frontier
         if not frontier:
             break

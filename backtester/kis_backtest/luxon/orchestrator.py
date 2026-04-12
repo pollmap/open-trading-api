@@ -18,7 +18,7 @@ Workflow:
         a) AckmanDruckenmillerEngine.evaluate_portfolio
         b) ConvictionSizer.set_conviction + size_position
         c) CatalystIngestor → GothamGraph (멱등)
-        d) 3-hop in-edge cross-reference
+        d) 1-hop in-neighbor cross-reference
     4. report.summary() → markdown
 
 Phase 2 마감. 이 파일이 Sprint 5~8 의 "출구" 이자 Phase 3+ 의 "입구" 역할.
@@ -103,7 +103,7 @@ class OrchestrationReport:
                 )
 
         if self.cross_references:
-            lines.extend(["", "## Graph Cross-References (3-hop in-edges)"])
+            lines.extend(["", "## Graph Cross-References (1-hop in-neighbors)"])
             for sym, refs in self.cross_references.items():
                 if refs:
                     lines.append(f"  · {sym} ← {', '.join(refs[:8])}")
