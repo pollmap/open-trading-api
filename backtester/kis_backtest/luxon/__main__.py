@@ -52,12 +52,45 @@ def main() -> None:
         "--dry-run", action="store_true", default=False,
         help="주문 계획만 보기 (실제 주문 X)",
     )
+    parser.add_argument(
+        "--backtest", action="store_true",
+        help="리스크 파이프라인 통과 (vol 타겟팅, DD 체크, Kelly)",
+    )
+    parser.add_argument(
+        "--validate", action="store_true",
+        help="Walk-Forward OOS 검증 (5-fold)",
+    )
     args = parser.parse_args()
 
     orch = LuxonOrchestrator(total_capital=args.capital)
     convictions = {s: args.conviction for s in args.symbols}
 
-    if args.weekly:
+    if args.backtest or args.validate:
+        import random
+        report = orch.run_workflow(args.symbols, base_convictions=convictions)
+        print(report.summary())
+        # 일간 수익률: MCP 없으면 합성 데이터로 검증 구조만 확인
+        random.seed(42)
+        returns_dict = {
+            s: [random.gauss(0.0003, 0.015) for _ in range(300)]
+            for s in args.symbols
+        }
+        if args.backtest:
+            print("\n## Risk Pipeline")
+            pr = orch.backtest(report, returns_dict=returns_dict)
+            print(f"  risk_passed: {pr.risk_passed}")
+            print(f"  kelly: {pr.kelly_allocation:.2f}")
+            for d in pr.risk_details:
+                print(f"  · {d}")
+        if args.validate:
+            print("\n## Walk-Forward OOS Validation")
+            wf = orch.validate(report, returns_dict=returns_dict)
+            print(f"  verdict: {wf.verdict}")
+            print(f"  mean_oos_sharpe: {wf.oos_mean_sharpe:.3f}")
+            print(f"  win_rate: {wf.win_rate:.0%}")
+            for row in wf.summary_table():
+                print(f"  fold {row['fold']}: IS={row['is_sharpe']} → OOS={row['oos_sharpe']} ({row['pass']})")
+    elif args.weekly:
         from pathlib import Path
         saved = orch.generate_weekly_letter(
             args.symbols, args.weekly, base_convictions=convictions,

@@ -1,15 +1,9 @@
 """
 Luxon Terminal — Gotham 레이어 (엔티티 온톨로지)
 
-Phase 2 (Sprint 5~7)에서 구현:
-    schema          — Node/Edge 타입
-    graph           — GothamGraph (networkx → Neo4j 옵션)
-    backends/       — networkx_backend, neo4j_backend
-    ingestors/      — DART/CUFA/뉴스 → Event 노드 변환
-    queries         — k-hop, 최단경로, impact_path
-
-참조:
-    플랜: C:\\Users\\lch68\\.claude\\plans\\valiant-honking-simon.md 섹션 5.5, 13.4
+NOTE: Sprint 5~8에서 luxon/graph/ 로 이미 구현 완료.
+      이 디렉토리는 향후 Neo4j 백엔드 등 확장 시 사용 예정.
+      현재 사용: luxon/graph/ (GothamGraph, 6노드/5엣지, stdlib only)
 """
 
 __all__: list[str] = []

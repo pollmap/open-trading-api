@@ -26,6 +26,7 @@ logging.getLogger("kis_backtest.portfolio.mcp_data_provider").setLevel(
 )
 
 from pathlib import Path
+from typing import Sequence
 
 from kis_backtest.luxon.graph import render_graph_html
 from kis_backtest.luxon.graph.parsers.cufa_html_parser import CufaHtmlParser
@@ -46,6 +47,32 @@ def _try_init_mcp() -> tuple[object | None, bool]:
     except Exception as exc:  # noqa: BLE001
         print(f"[info] MCP 초기화 실패 ({exc!r}), 로컬 모드로 진행")
         return None, False
+
+
+def _fetch_returns(
+    symbols: list[str],
+    mcp: object | None,
+    min_days: int = 120,
+) -> dict[str, list[float]]:
+    """MCP에서 실 일간수익률 fetch. 실패 시 빈 dict (합성 fallback).
+
+    mcp.get_stock_returns_sync(ticker) 호출.
+    min_days 미만이면 해당 종목 제외.
+    """
+    if mcp is None:
+        return {}
+    returns_dict: dict[str, list[float]] = {}
+    for sym in symbols:
+        try:
+            rets = mcp.get_stock_returns_sync(sym)
+            if rets and len(rets) >= min_days:
+                returns_dict[sym] = list(rets)
+                print(f"[returns] {sym}: {len(rets)}일 실데이터 로드")
+            else:
+                print(f"[returns] {sym}: {len(rets) if rets else 0}일 (부족, skip)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[returns] {sym} fetch 실패: {exc!r}")
+    return returns_dict
 
 
 async def _main() -> None:
@@ -122,6 +149,37 @@ async def _main() -> None:
     graph_html.parent.mkdir(parents=True, exist_ok=True)
     render_graph_html(orch.graph, str(graph_html), title="Luxon Watchlist")
     print(f"[graph] file:///{graph_html.resolve().as_posix()}")
+
+    # ── 리스크 파이프라인 + Walk-Forward 자동 검증 ────────────
+    import random
+    random.seed(42)
+    # 실데이터 fetch 시도 → 실패 시 합성 데이터 fallback
+    returns_dict = _fetch_returns(symbols, mcp)
+    if not returns_dict:
+        print("[info] 수익률 데이터 없음 → 합성 데이터로 검증 구조 확인")
+        returns_dict = {
+            s: [random.gauss(0.0003, 0.015) for _ in range(300)]
+            for s in symbols
+        }
+
+    print("\n## Risk Pipeline (QuantPipeline)")
+    pr = orch.backtest(report, returns_dict=returns_dict)
+    print(f"  risk_passed: {pr.risk_passed}")
+    print(f"  kelly: {pr.kelly_allocation:.2f}")
+    for d in pr.risk_details[:5]:
+        print(f"  · {d}")
+
+    print("\n## Walk-Forward OOS Validation (5-fold)")
+    wf = orch.validate(report, returns_dict=returns_dict)
+    print(f"  verdict: {wf.verdict}")
+    print(f"  mean_oos_sharpe: {wf.oos_mean_sharpe:.3f}")
+    print(f"  win_rate: {wf.win_rate:.0%}")
+    for row in wf.summary_table():
+        print(
+            f"  fold {row['fold']}: "
+            f"IS={row['is_sharpe']} → OOS={row['oos_sharpe']} "
+            f"({row['pass']})"
+        )
 
 
 def main() -> None:

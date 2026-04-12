@@ -313,6 +313,125 @@ class LuxonOrchestrator:
 
     # ── 주문 실행 ─────────────────────────────────────────
 
+    # ── 백테스트 / 검증 ────────────────────────────────────
+
+    def backtest(
+        self,
+        report: OrchestrationReport,
+        returns_dict: dict[str, list[float]] | None = None,
+        equity_curve: list[float] | None = None,
+        backtest_sharpe: float | None = None,
+        backtest_max_dd: float | None = None,
+    ) -> Any:
+        """분석 결과를 리스크 파이프라인에 통과.
+
+        QuantPipeline 의 변동성 타겟팅, DD 체크, Kelly 조정을 적용해
+        OrchestrationReport 의 비중이 실전에 적합한지 검증한다.
+
+        Args:
+            report: run_workflow 결과.
+            returns_dict: 종목별 일간 수익률.
+            equity_curve: 자산 곡선 (DD 체크용).
+            backtest_sharpe: 백테스트 Sharpe.
+            backtest_max_dd: 백테스트 MaxDD.
+
+        Returns:
+            PipelineResult (core.pipeline).
+        """
+        from .backtest_bridge import BacktestBridge
+
+        bridge = BacktestBridge(mcp_provider=self.mcp)
+        return bridge.run_risk_pipeline(
+            report,
+            returns_dict=returns_dict,
+            equity_curve=equity_curve,
+            backtest_sharpe=backtest_sharpe,
+            backtest_max_dd=backtest_max_dd,
+        )
+
+    def validate(
+        self,
+        report: OrchestrationReport,
+        returns_dict: dict[str, list[float]],
+        n_folds: int = 5,
+        min_sharpe: float = 0.3,
+    ) -> Any:
+        """Walk-Forward OOS 검증.
+
+        position_sizes 비중으로 포트폴리오 수익률을 합성한 뒤
+        N-fold IS/OOS 교차 검증을 수행한다.
+
+        Args:
+            report: run_workflow 결과.
+            returns_dict: 종목별 일간 수익률 (최소 60일).
+            n_folds: 폴드 수 (기본 5).
+            min_sharpe: 최소 OOS Sharpe (기본 0.3).
+
+        Returns:
+            WFResult (core.walk_forward).
+        """
+        from .backtest_bridge import BacktestBridge
+
+        bridge = BacktestBridge(mcp_provider=self.mcp)
+        return bridge.validate_oos(
+            report,
+            returns_dict=returns_dict,
+            n_folds=n_folds,
+            min_sharpe=min_sharpe,
+        )
+
+    # ── 복기 ─────────────────────────────────────────────
+
+    def schedule_review(
+        self,
+        brokerage: Any = None,
+        vault_path: str | Path | None = None,
+        kill_conditions: list[Any] | None = None,
+    ) -> dict[str, Any]:
+        """ReviewScheduler 연결. should_run 체크 → 일/주간 복기 자동 실행.
+
+        brokerage 미설정 시 RuntimeError.
+        Vault 기본 경로: ~/obsidian-vault/ (없으면 로컬 out/).
+
+        Returns:
+            dict: {daily: DailySnapshot|None, weekly: WeeklyReport|None}
+        """
+        if brokerage is None:
+            raise RuntimeError(
+                "schedule_review: brokerage 필수. "
+                "KISBrokerageProvider 전달하세요."
+            )
+        from kis_backtest.execution.review_scheduler import ReviewScheduler
+        from kis_backtest.execution.vault_writer import VaultWriter
+        from kis_backtest.portfolio.review_engine import ReviewEngine
+
+        vault_dir = Path(vault_path) if vault_path else (
+            Path.home() / "obsidian-vault"
+        )
+        if not vault_dir.exists():
+            vault_dir = Path(__file__).resolve().parent.parent.parent / "out"
+
+        review_engine = ReviewEngine(
+            initial_capital=self.total_capital,
+        )
+        vault_writer = VaultWriter(vault_root=vault_dir)
+        scheduler = ReviewScheduler(
+            brokerage=brokerage,
+            review_engine=review_engine,
+            vault_writer=vault_writer,
+            kill_conditions=kill_conditions,
+            initial_capital=self.total_capital,
+        )
+
+        result: dict[str, Any] = {"daily": None, "weekly": None}
+        if scheduler.should_run_daily():
+            result["daily"] = scheduler.run_daily()
+        if scheduler.should_run_weekly():
+            result["weekly"] = scheduler.run_weekly()
+        return result
+
+    # ── 주문 실행 ─────────────────────────────────────────
+
     def execute_decisions(
         self,
         report: OrchestrationReport,
