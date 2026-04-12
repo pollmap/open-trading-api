@@ -25,6 +25,10 @@ logging.getLogger("kis_backtest.portfolio.mcp_data_provider").setLevel(
     logging.ERROR
 )
 
+from pathlib import Path
+
+from kis_backtest.luxon.graph import render_graph_html
+from kis_backtest.luxon.graph.parsers.cufa_html_parser import CufaHtmlParser
 from kis_backtest.luxon.orchestrator import LuxonOrchestrator
 from kis_backtest.portfolio.catalyst_tracker import CatalystType
 
@@ -82,6 +86,20 @@ async def _main() -> None:
         impact=8.0,
     )
 
+    # CUFA 보고서 자동 스캔+주입 (Desktop 에 있는 보고서들 → 인물/섹터/테마 노드)
+    parser = CufaHtmlParser()
+    cufa_paths = list(Path.home().glob("Desktop/*CUFA*보고서*.html"))
+    cufa_paths += list(
+        Path.home().glob("Desktop/06_CUFA보고서/cufa_report_*/output/*.html")
+    )
+    for p in cufa_paths:
+        try:
+            digest = parser.parse_file(p)
+            orch.add_cufa_digest(digest)
+            print(f"[cufa] {p.name} → {digest.symbol} ({digest.sector})")
+        except (ValueError, FileNotFoundError) as exc:  # noqa: BLE001
+            print(f"[cufa] skip {p.name}: {exc}")
+
     # 관심도 수동 지정 — 카탈리스트 있는 종목 가중
     convictions = {s: 5.0 for s in symbols}
     convictions["005930"] = 8.0
@@ -89,6 +107,12 @@ async def _main() -> None:
     report = orch.run_workflow(symbols, base_convictions=convictions)
     print()
     print(report.summary())
+
+    # GothamGraph HTML 시각화 자동 생성
+    graph_html = Path("out/luxon_watchlist.html")
+    graph_html.parent.mkdir(parents=True, exist_ok=True)
+    render_graph_html(orch.graph, str(graph_html), title="Luxon Watchlist")
+    print(f"\n[graph] file:///{graph_html.resolve().as_posix()}")
 
 
 def main() -> None:
