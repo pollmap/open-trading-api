@@ -66,6 +66,16 @@ class GothamGraph:
         """노드 존재 여부."""
         return node_id in self._nodes
 
+    @property
+    def all_nodes(self) -> list[GraphNode]:
+        """모든 노드 리스트 (public API)."""
+        return list(self._nodes.values())
+
+    @property
+    def all_edges(self) -> list[GraphEdge]:
+        """모든 엣지 리스트 (public API)."""
+        return list(self._edges)
+
     def has_edge(
         self,
         source: str,

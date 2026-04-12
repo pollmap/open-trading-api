@@ -110,14 +110,15 @@ async def _main() -> None:
 
     # 주간 레터 자동 저장 (이미 계산된 report 재사용, 이중 호출 방지)
     from datetime import datetime
-    week_tag = datetime.now().strftime("%Y-W%V")
+    week_tag = datetime.now().strftime("%G-W%V")  # %G = ISO year (연말 %Y 버그 방지)
     letter_path = Path.home() / "Desktop" / "luxon" / "letters" / f"{week_tag}.md"
     letter_path.parent.mkdir(parents=True, exist_ok=True)
     letter_path.write_text(report.summary(), encoding="utf-8")
     print(f"\n[letter] {letter_path}")
 
-    # GothamGraph HTML 시각화 자동 생성
-    graph_html = Path("out/luxon_watchlist.html")
+    # GothamGraph HTML 시각화 자동 생성 (스크립트 위치 기준 절대경로)
+    _SCRIPT_DIR = Path(__file__).resolve().parent
+    graph_html = _SCRIPT_DIR.parent / "out" / "luxon_watchlist.html"
     graph_html.parent.mkdir(parents=True, exist_ok=True)
     render_graph_html(orch.graph, str(graph_html), title="Luxon Watchlist")
     print(f"[graph] file:///{graph_html.resolve().as_posix()}")

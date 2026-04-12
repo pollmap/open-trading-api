@@ -159,8 +159,10 @@ class CatalystIngestor:
         for catalyst in tracker.list_all_active():
             try:
                 node_id = self.ingest_catalyst(catalyst)
-            except ValueError:
-                continue
+            except ValueError as exc:
+                if "already exists" in str(exc):
+                    continue  # 중복 노드 → 정상 skip
+                raise  # 다른 ValueError (엣지 실패 등) → 전파
             created_ids.append(node_id)
         return created_ids
 

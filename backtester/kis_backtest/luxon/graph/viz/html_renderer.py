@@ -80,7 +80,7 @@ def render_graph_html(
     )
     net.toggle_physics(True)
 
-    for node in graph._nodes.values():
+    for node in graph.all_nodes:
         color = NODE_COLORS.get(node.kind, "#888888")
         if highlighted and node.node_id not in highlighted:
             color = FADE_COLOR
@@ -92,7 +92,7 @@ def render_graph_html(
             group=node.kind.value,
         )
 
-    for edge in graph._edges:
+    for edge in graph.all_edges:
         width = max(1.0, min(5.0, edge.weight * 5.0))
         net.add_edge(
             edge.source_id,
