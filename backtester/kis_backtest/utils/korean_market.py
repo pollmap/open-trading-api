@@ -4,7 +4,75 @@
 """
 
 import math
+from datetime import datetime, time, timezone, timedelta
 from typing import Literal
+
+# KST 타임존 (UTC+9)
+KST = timezone(timedelta(hours=9))
+
+# 정규 거래시간
+MARKET_OPEN = time(9, 0)    # 09:00 KST
+MARKET_CLOSE = time(15, 30)  # 15:30 KST
+
+# 주말 (0=월 ~ 6=일)
+WEEKEND = {5, 6}  # 토, 일
+
+
+def is_market_open(now: datetime | None = None) -> bool:
+    """한국 주식시장 거래시간 여부 확인
+
+    정규 거래시간: 평일 09:00 ~ 15:30 KST
+    공휴일은 체크하지 않음 (별도 캘린더 필요).
+
+    Args:
+        now: 기준 시간 (None이면 현재 KST)
+
+    Returns:
+        거래시간 여부
+    """
+    if now is None:
+        now = datetime.now(KST)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=KST)
+
+    if now.weekday() in WEEKEND:
+        return False
+
+    current_time = now.time()
+    return MARKET_OPEN <= current_time <= MARKET_CLOSE
+
+
+def next_market_open(now: datetime | None = None) -> datetime:
+    """다음 장 개시 시각 반환
+
+    Args:
+        now: 기준 시간 (None이면 현재 KST)
+
+    Returns:
+        다음 장 시작 datetime (KST)
+    """
+    if now is None:
+        now = datetime.now(KST)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=KST)
+
+    candidate = now.replace(
+        hour=MARKET_OPEN.hour,
+        minute=MARKET_OPEN.minute,
+        second=0,
+        microsecond=0,
+    )
+
+    # 오늘 장이 아직 안 열었고 평일이면 오늘
+    if candidate > now and now.weekday() not in WEEKEND:
+        return candidate
+
+    # 다음 평일 찾기
+    candidate += timedelta(days=1)
+    while candidate.weekday() in WEEKEND:
+        candidate += timedelta(days=1)
+
+    return candidate
 
 
 def get_tick_size(price: float) -> int:

@@ -25,6 +25,7 @@ dependencies = [
     "plotly>=5.18.0",
     "PyJWT>=2.0.0",
     "pyvis>=0.3.2",
+    "beautifulsoup4>=4.14.3",
 ]
 
 [project.optional-dependencies]

@@ -81,7 +81,7 @@ class LeanRun:
         
         result_file = self.result_json
         if result_file and result_file.exists():
-            self.raw_result = json.loads(result_file.read_text())
+            self.raw_result = json.loads(result_file.read_text(encoding="utf-8"))
             return self.raw_result
         
         return {}
@@ -214,12 +214,14 @@ class LeanExecutor:
                 cmd,
                 capture_output=True,
                 text=True,
+                encoding="utf-8",
+                errors="replace",
                 timeout=timeout,
             )
             
             finished_at = datetime.now()
             duration = (finished_at - started_at).total_seconds()
-            stdout = result.stdout + result.stderr
+            stdout = (result.stdout or "") + (result.stderr or "")
             
             if result.returncode != 0:
                 error_msg = f"Lean 백테스트 실패 (exit code: {result.returncode})\n{stdout[-2000:]}"
