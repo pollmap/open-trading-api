@@ -1,30 +1,62 @@
 """
-찬희 개인용 Luxon 워크플로우 1회 실행 스크립트.
+찬희 개인용 Luxon 상세 워크플로우 실행 스크립트.
 
 사용:
     .venv/Scripts/python.exe backtester/scripts/luxon_run.py
 
-기본값 하드코딩 — 개인 사용만, 인자 받지 않음. 바꾸고 싶으면 이 파일 직접 수정.
-MCP 연결은 skip (Windows 에서 VPS IP 제한 걸림). 필요하면 mcp 변수 주석 해제.
+기본값 하드코딩 — 개인 사용만. 바꾸고 싶으면 이 파일 직접 수정.
+MCP 자동 시도: 접근 가능하면 매크로 지표 로드 (20초 추가), 실패 시 로컬 모드.
+
+빠른 한 줄 호출을 원하면:
+    .venv/Scripts/python.exe -m kis_backtest.luxon 005930 000660
 """
 from __future__ import annotations
 
+import asyncio
+import logging
 import sys
 
 # Windows cp949 콘솔에서 한글/em-dash 출력 깨짐 방지
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
 
+# MCP provider 의 "VPS MCP 세션 ID 미설정" 노이즈 경고 억제
+logging.getLogger("kis_backtest.portfolio.mcp_data_provider").setLevel(
+    logging.ERROR
+)
+
 from kis_backtest.luxon.orchestrator import LuxonOrchestrator
 from kis_backtest.portfolio.catalyst_tracker import CatalystType
 
 
-def main() -> None:
-    # MCP 없이 로컬 전용 (Windows IP 제한 회피)
-    # 필요하면 이 두 줄 주석 해제:
-    # from kis_backtest.portfolio.mcp_data_provider import MCPDataProvider
-    # mcp = MCPDataProvider()
-    orch = LuxonOrchestrator(mcp=None)
+def _try_init_mcp() -> tuple[object | None, bool]:
+    """MCP 프로바이더 생성 + health check. 실패 시 (None, False)."""
+    try:
+        from kis_backtest.portfolio.mcp_data_provider import MCPDataProvider
+        mcp = MCPDataProvider()
+        health = mcp.health_check_sync()
+        if health.get("status") == "ok":
+            return mcp, True
+        print(f"[info] MCP health 실패 ({health}), 로컬 모드로 진행")
+        return None, False
+    except Exception as exc:  # noqa: BLE001
+        print(f"[info] MCP 초기화 실패 ({exc!r}), 로컬 모드로 진행")
+        return None, False
+
+
+async def _main() -> None:
+    mcp, use_mcp = _try_init_mcp()
+    if use_mcp:
+        print("[info] MCP 연결됨, 매크로 지표 로드 중 (최대 30초)...")
+
+    orch = LuxonOrchestrator(mcp=mcp)
+
+    if use_mcp:
+        try:
+            await orch.refresh_macro()
+            print("[info] MCP 매크로 지표 로드 완료")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] refresh_macro 실패 ({exc!r}), regime 디폴트 사용")
 
     # 찬희 관심종목 10개 (2026-04 시점)
     symbols = [
@@ -55,7 +87,12 @@ def main() -> None:
     convictions["005930"] = 8.0
 
     report = orch.run_workflow(symbols, base_convictions=convictions)
+    print()
     print(report.summary())
+
+
+def main() -> None:
+    asyncio.run(_main())
 
 
 if __name__ == "__main__":
