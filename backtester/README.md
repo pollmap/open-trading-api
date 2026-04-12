@@ -1,6 +1,6 @@
-# Backtester — AI 퀀트 운용 시스템 v0.3α
+# Backtester — AI 퀀트 운용 시스템 v0.4α
 
-> **871 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | **Luxon Terminal** | [ARCHITECTURE.md](ARCHITECTURE.md)
+> **880 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | **Luxon Terminal** | [ARCHITECTURE.md](ARCHITECTURE.md)
 
 한국투자증권 Open API 기반 **1인 AI 퀀트 운용 시스템**입니다.
 
@@ -119,6 +119,11 @@ npm run dev
 | 파라미터 최적화 | Grid/Random Search |
 | HTML 리포트 | 자동 생성 (차트 + 거래 내역) |
 | MCP 서버 | AI 에이전트에서 직접 호출 가능 (:3846) |
+| **Luxon Terminal** | Ackman+Druckenmiller AI 투자 분석 → 리스크 검증 → 주문 실행 |
+| Walk-Forward 검증 | 5-fold IS/OOS 교차 검증으로 과최적화 탐지 |
+| 리스크 파이프라인 | Vol 타겟팅 + DD 가드 + Kelly 사이징 + VPIN |
+| GothamGraph | 6노드/5엣지 지식 그래프 (종목-이벤트-인물 관계) |
+| 모의/실전 매매 | KIS 모의투자 + 실전 (3중 안전장치: KillSwitch+RiskGateway+CapitalLadder) |
 
 ---
 
@@ -529,9 +534,28 @@ backtester/
 │   │   ├── auth.py             # 인증/토큰
 │   │   ├── data.py             # 시세 데이터
 │   │   └── websocket.py        # 실시간 데이터
-│   ├── portfolio/              # 포트폴리오 분석
-│   │   ├── analyzer.py         # 수익률, 샤프비율, 상관관계
-│   │   └── visualizer.py       # 차트 생성
+│   ├── portfolio/              # 포트폴리오 운용 (17모듈)
+│   │   ├── ackman_druckenmiller.py  # A+D 투자 엔진
+│   │   ├── catalyst_tracker.py      # 카탈리스트 관리
+│   │   ├── conviction_sizer.py      # Half-Kelly 사이징
+│   │   ├── macro_regime.py          # 매크로 레짐 대시보드
+│   │   ├── mcp_data_provider.py     # Nexus MCP 398도구 클라이언트
+│   │   ├── review_engine.py         # 주간 복기 엔진
+│   │   ├── analyzer.py              # 수익률, 샤프비율, 상관관계
+│   │   └── ...                      # +10 modules
+│   ├── execution/              # 주문 실행 레이어 (10모듈)
+│   │   ├── order_executor.py        # KIS 주문 실행
+│   │   ├── risk_gateway.py          # 7개 리스크 체크
+│   │   ├── kill_switch.py           # 긴급 중단
+│   │   ├── capital_ladder.py        # 5단계 자본 배분
+│   │   └── ...                      # +6 modules
+│   ├── luxon/                  # Luxon Terminal (33파일)
+│   │   ├── orchestrator.py          # 메인 오케스트레이터
+│   │   ├── backtest_bridge.py       # Pipeline/WF 검증 어댑터
+│   │   ├── executor_bridge.py       # KIS 매매 어댑터
+│   │   ├── __main__.py              # CLI (python -m kis_backtest.luxon)
+│   │   ├── graph/                   # GothamGraph 지식 그래프
+│   │   └── stream/                  # FRED/KIS/Upbit 실시간 스트림
 │   └── report/                 # HTML 리포트
 │
 ├── backend/                    # FastAPI 서버
