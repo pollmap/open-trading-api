@@ -16,6 +16,8 @@ Style:
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from kis_backtest.luxon.graph.edges import EdgeKind
@@ -206,3 +208,45 @@ def test_run_workflow_default_conviction_is_5() -> None:
     decision = report.portfolio.decisions[0]
     assert decision.symbol == "005930"
     assert decision.conviction == 5.0  # 기본값
+
+
+def test_generate_weekly_letter_writes_markdown_file(tmp_path: Path) -> None:
+    # Arrange
+    orch = LuxonOrchestrator()
+    orch.add_catalyst(
+        symbol="005930",
+        name="HBM4 양산",
+        catalyst_type=CatalystType.INDUSTRY,
+        expected_date="2026-05-15",
+        probability=0.8,
+        impact=8.0,
+    )
+    output_path = tmp_path / "2026-W15.md"
+
+    # Act
+    saved = orch.generate_weekly_letter(
+        ["005930"],
+        output_path,
+        base_convictions={"005930": 8.0},
+    )
+
+    # Assert — 파일 존재 + Path 반환 + 마크다운 헤더 포함
+    assert saved == output_path
+    assert output_path.exists()
+    content = output_path.read_text(encoding="utf-8")
+    assert "# Luxon Orchestration Report" in content
+    assert "005930" in content
+
+
+def test_generate_weekly_letter_creates_parent_dirs(tmp_path: Path) -> None:
+    # Arrange — 존재하지 않는 중첩 디렉토리
+    orch = LuxonOrchestrator()
+    nested = tmp_path / "letters" / "2026" / "week15.md"
+
+    # Act
+    saved = orch.generate_weekly_letter(["005930"], nested)
+
+    # Assert — 상위 디렉토리 자동 생성 + 파일 존재
+    assert nested.parent.exists()
+    assert saved.exists()
+    assert "005930" in saved.read_text(encoding="utf-8")

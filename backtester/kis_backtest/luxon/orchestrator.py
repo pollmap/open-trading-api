@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from kis_backtest.luxon.graph.edges import EdgeKind
@@ -272,6 +273,42 @@ class LuxonOrchestrator:
             position_sizes=position_sizes,
             cross_references=cross_references,
         )
+
+    # ── 리포트 저장 helper ────────────────────────────────────
+
+    def generate_weekly_letter(
+        self,
+        symbols: list[str],
+        output_path: str | Path,
+        base_convictions: dict[str, float] | None = None,
+        *,
+        ingest_to_graph: bool = True,
+    ) -> Path:
+        """주간 워크플로우 결과를 마크다운 파일로 저장.
+
+        `run_workflow` 호출 후 `OrchestrationReport.summary()` 를 그대로
+        지정 경로에 저장한다. 백테스트 성과 리포트 (`investor_letter.py`)
+        와 달리 "현재 시점 투자 의사결정 스냅샷" 으로 설계되어 수익률/샤프
+        등 사후 지표는 포함하지 않는다.
+
+        Args:
+            symbols: 분석 종목 리스트.
+            output_path: 저장할 .md 파일 경로. 상위 디렉토리가 없으면 생성.
+            base_convictions: 종목별 기본 확신도 (1-10). None 이면 5.0.
+            ingest_to_graph: run_workflow 와 동일.
+
+        Returns:
+            저장된 파일의 `Path`.
+        """
+        report = self.run_workflow(
+            symbols,
+            base_convictions=base_convictions,
+            ingest_to_graph=ingest_to_graph,
+        )
+        path = Path(output_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(report.summary(), encoding="utf-8")
+        return path
 
 
 __all__ = ["LuxonOrchestrator", "OrchestrationReport"]
