@@ -35,6 +35,9 @@ class TestNoHardcodedData:
         """kis_backtest 소스에서 62.171.141.206이 fallback 외에 없는지 확인"""
         hardcoded_count = 0
         for py_file in BACKTESTER_ROOT.rglob("*.py"):
+            # 테스트 파일은 제외 (보안 테스트가 IP를 참조할 수 있음)
+            if "tests" in py_file.parts or py_file.name.startswith("test_"):
+                continue
             content = py_file.read_text(encoding="utf-8")
             lines = content.splitlines()
             for i, line in enumerate(lines, 1):
