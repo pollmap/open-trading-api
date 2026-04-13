@@ -1,6 +1,6 @@
 # Luxon AI Quant System — Architecture & Design
 
-> **버전**: v0.3α | **테스트**: 378/378 PASS | **도구**: MCP 398개 | **GitHub**: pollmap/open-trading-api
+> **버전**: v0.4α | **테스트**: 907+ PASS | **도구**: MCP 398개 | **GitHub**: pollmap/open-trading-api
 
 ---
 
@@ -546,4 +546,206 @@ print(result.order.summary())
 
 ---
 
-*Luxon AI Quant System v0.3α | 378 tests | MCP 398 tools | pollmap/open-trading-api*
+---
+
+## 13. v0.4α 신규 — Luxon Terminal & 선순환 아키텍처
+
+> Sprint 7+ 에서 추가된 7계층 통합 + 3개 피드백 루프 완성
+
+### 13.1 전체 7계층 아키텍처 (v0.4α)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  Layer 7: 진입점 & 스크립트                                             │
+│  ├── scripts/luxon_server.py   (Phosphor Terminal 대시보드 :7777)        │
+│  ├── scripts/luxon_run.py      (CLI 사이클 러너)                         │
+│  └── scripts/luxon_backtest_runner.py (백테스트 배치)                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 6: LuxonTerminal (통합 파사드)                                   │
+│  └── kis_backtest/luxon/terminal.py   (11단계 사이클)                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 5: 오케스트레이션 & 피드백                                        │
+│  ├── luxon/orchestrator.py            (LuxonOrchestrator)                │
+│  ├── portfolio/feedback_adapter.py    (BREAK1/2 해결)                   │
+│  └── luxon/graph/ingestors/signal_accuracy_tracker.py  (BREAK3 해결)   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 4: 포트폴리오 관리                                               │
+│  ├── portfolio/catalyst_tracker.py                                      │
+│  ├── portfolio/kill_switch.py                                           │
+│  ├── portfolio/capital_ladder.py                                        │
+│  └── portfolio/weekly_review.py                                         │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 3: 지식 그래프 & TA 신호                                         │
+│  ├── luxon/graph/graph.py             (GothamGraph)                     │
+│  ├── luxon/graph/nodes.py / edges.py                                    │
+│  └── luxon/graph/ingestors/                                             │
+│       ├── ta_signal_ingestor.py       (RSI/MACD/BB → EventNode)        │
+│       ├── macro_ingestor.py                                             │
+│       └── news_ingestor.py                                              │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 2: 리스크 & 백테스트 (기존 v0.3α)                               │
+│  ├── risk/ 6모듈                                                        │
+│  └── core/pipeline.py (QuantPipeline)                                   │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Layer 1: MCP 브릿지 & 데이터                                           │
+│  ├── mcp/mcp_bridge.py        (로컬:8100 → VPS 폴백)                   │
+│  └── mcp/macro_regime.py      (레짐 감지)                              │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.2 MCP TA 2단계 파이프라인 (핵심 발견)
+
+nexus-finance-mcp `ta_*` 도구는 **symbol이 아닌 OHLCV 배열**을 받는 순수 함수.
+
+```
+종목코드
+   │
+   ▼
+stocks_history(stock_code, limit=40)
+   │ → {"success": True, "data": [{date, open, high, low, close, volume}, ...]}
+   ▼
+ohlcv: list[dict]  (40행)
+   │
+   ├──→ ta_rsi(data=ohlcv, period=14)
+   │       응답: {"success": True, "latest_value": 39.24, "signal": "neutral"}
+   │
+   ├──→ ta_macd(data=ohlcv)
+   │       응답: {"success": True, "latest": {"macd": 3149.4, "signal": None}}
+   │
+   └──→ ta_bollinger(data=ohlcv)
+           응답: {"success": True, "latest": {"upper": 215313, "lower": 168326, "close": 201500}}
+```
+
+### 13.3 선순환 피드백 루프 (3개 BREAK → 해결)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                      선순환 피드백 (v0.4α 완성)                      │
+│                                                                     │
+│   ~/.luxon/convictions.json                                         │
+│          │ 로드                                                      │
+│          ▼                                                          │
+│   LuxonOrchestrator.run_workflow()                                  │
+│          │                                                          │
+│          ▼                                                          │
+│   KIS 주문 실행 (paper_mode=True)                                   │
+│          │                                                          │
+│          ▼                                                          │
+│   포트폴리오 성과 측정                                              │
+│     │              │                                                │
+│     ▼              ▼                                                │
+│  WeeklyReport   SignalAccuracyTracker.update_outcomes()             │
+│     │              │                                                │
+│     ▼              ▼                                                │
+│  FeedbackAdapter  학습된 확률 저장                                  │
+│  .apply()         ~/.luxon/signal_accuracy.json                     │
+│     │                                                               │
+│     ├── BREAK1 해결: action_items → conviction 자동 조정 ✅         │
+│     ├── BREAK2 해결: kill_conditions → KillSwitch.activate() ✅     │
+│     └── BREAK3 해결: TA probability 0.3×기본+0.7×학습 ✅           │
+│          │                                                          │
+│          ▼                                                          │
+│   ~/.luxon/convictions.json 저장                                    │
+│          │                                                          │
+│          └──────────────── 다음 사이클에 로드 ─────────────────────┘
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### 13.4 LuxonTerminal 11단계 사이클
+
+```python
+from kis_backtest.luxon import LuxonTerminal, TerminalConfig
+
+terminal = LuxonTerminal(TerminalConfig(
+    symbols=["005930", "000660", "035720"],
+    initial_capital=10_000_000,
+    paper_mode=True,
+    cycle_interval_minutes=60,
+))
+terminal.boot()
+report = terminal.cycle()   # 11단계 자동 실행
+terminal.run_loop(max_cycles=24)
+```
+
+사이클 11단계:
+1. KillSwitch 체크 → active면 즉시 반환
+2. MacroRegime 감지 (ecos + fred 다수결)
+3. SignalAccuracyTracker 학습 데이터 로드
+4. FeedbackAdapter.load_persisted_convictions()
+5. TASignalIngestor.ingest() → GothamGraph 주입
+6. LuxonOrchestrator.run_workflow()
+7. 체결 추출 + Paper 기록
+8. WeeklyReviewEngine.generate()
+9. FeedbackAdapter.apply() (컨빅션 조정 + 킬스위치 발동)
+10. FeedbackAdapter.save_convictions()
+11. SignalAccuracyTracker.save()
+
+### 13.5 Phosphor Terminal 대시보드
+
+```
+scripts/luxon_server.py
+  ├── HTTP :7777
+  │   ├── GET /           Phosphor HTML (VT323폰트, 앰버 #d4a017, CRT 스캔라인)
+  │   │                   JS setInterval(30초) → /api/data 폴링
+  │   └── GET /api/data   실시간 JSON
+  │                       {regime, portfolio, ta_signals, pnl_curve, fills,
+  │                        capital_stage, kill_switch}
+  │
+  └── DataService (백그라운드 스레드)
+      ├── 30초마다 MCPDataProvider._fetch_all()
+      ├── _fetch_pnl(): get_stock_returns_sync() → 누적 실 PnL
+      └── _fetch_ta_signals(): TASignalIngestor.ingest_sync()
+```
+
+### 13.6 퍼시스턴스 레이어
+
+```
+~/.luxon/
+├── convictions.json       {symbol: score, ...}  ← FeedbackAdapter 관리
+├── signal_accuracy.json   {RSI: {hits, total, ...}, ...}  ← SignalAccuracyTracker
+├── capital_ladder.json    {stage: "PAPER", ...}
+├── kill_switch.json       {active: false, activated_at: null}
+└── paper_fills.json       [{symbol, qty, price, date}, ...]
+```
+
+### 13.7 품질 게이트
+
+```python
+# tests/test_no_hardcoded_vps_ip_in_logic.py
+def test_no_hardcoded_vps_ip_in_logic():
+    """logic 파일에 VPS IP(62.171.x.x) 하드코딩 금지.
+    반드시 os.environ.get('MCP_VPS_HOST', '') 사용."""
+```
+
+`terminal.py`에서:
+```python
+# ✓ 올바른 방법
+vps_host = os.environ.get("MCP_VPS_HOST", "")
+```
+
+### 13.8 v0.4α 테스트 추가
+
+```
+tests/luxon/
+├── test_ta_signal_ingestor.py   (2단계 파이프라인, FakeMCPTA with stocks_history)
+├── test_feedback_adapter.py     (BREAK1/2)
+├── test_signal_accuracy.py      (BREAK3 학습)
+└── test_terminal.py             (11단계 사이클 E2E)
+```
+
+### 13.9 v0.4α 마일스톤 달성
+
+| 항목 | 상태 |
+|------|------|
+| LuxonTerminal 파사드 (7계층 통합) | ✅ |
+| TA 2단계 파이프라인 (stocks_history→ta_*) | ✅ |
+| BREAK1: WeeklyReport→컨빅션 자동갱신 | ✅ |
+| BREAK2: KillCondition→KillSwitch 자동발동 | ✅ |
+| BREAK3: TA 확률 학습 (SignalAccuracyTracker) | ✅ |
+| Phosphor Terminal 대시보드 (:7777) | ✅ |
+| VPS IP 하드코딩 금지 품질 게이트 PASS | ✅ |
+| 907+ tests (회귀 0건) | ✅ |
+
+---
+
+*Luxon AI Quant System v0.4α | 907+ tests | MCP 398 tools | pollmap/open-trading-api*

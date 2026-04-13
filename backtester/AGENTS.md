@@ -261,6 +261,7 @@ Luxon-Quarterly-Review    일 18:30 (분기말일만)
 
 보안: mcpserver 전용유저, HTTPS(443), **127.0.0.1 바인딩**, nginx auth+IP제한, UFW deny, SSH key-only
 MCP 재시작 시 25초 대기 (46서버 로딩)
+**로컬 MCP**: nexus-finance-mcp 로컬 포크 (2026-04-13) — 127.0.0.1:8100, 64서버/398도구, 왕복 레이턴시 ~1ms (VPS 대비 200ms+ 절감)
 
 ## Environment Notes (로컬)
 
@@ -274,7 +275,8 @@ MCP 재시작 시 25초 대기 (46서버 로딩)
   - VPS (`ssh luxon claude`) — Luxon 에이전트, MCP 서버, nexus-finance-mcp
   - 에이전트 3개: VPS 2개(HERMES/NEXUS) + WSL 1개(DOGE). 로컬(Windows)에는 에이전트 없음
 - **KIS 투자 인프라**: ~/Desktop/open-trading-api/, KIS config: ~/KIS/config/kis_devlp.yaml
-- **MCP 로컬**: drawio (원격) + kis-backtest (127.0.0.1:3846) + nexus-finance (VPS) — ~/.mcp.json (type: "http")
+- **MCP 로컬**: drawio (원격) + kis-backtest (127.0.0.1:3846) + nexus-finance-mcp (127.0.0.1:8100, 64서버/398도구) + career-ops-kr (stdio) + gitlawb (stdio) — ~/.mcp.json
+- **nexus-finance-mcp 로컬**: `~/Desktop/05_개발·도구/nexus-finance-mcp/` (VPS 포크, 2026-04-13). 자동시작: Windows Startup 폴더 VBS스크립트. 백업: nexus-finance-vps (62.171.141.206)
 - **Docker Desktop**: 설치됨, 자동 시작
 
 ## 로컬 LLM 스택 (2026-04-13 실측 완료)
@@ -360,11 +362,7 @@ MCP 재시작 시 25초 대기 (46서버 로딩)
 
 - **⛔ VPS 설정 변경 절대 금지**: 명시적 요청 없이 config, systemd, nginx, UFW, DNS, openclaw.json 절대 수정 금지. 에이전트 서비스 중지/재시작도 찬희 승인 필수. (2026-03-29 전체 에이전트 동시 장애 사건 재발 방지)
 - **SSH heredoc 안전**: Python f-string, 따옴표, 특수문자 이스케이프 철저. 확신 없으면 소규모 스니펫으로 먼저 테스트
-- **heredoc 검증 프로토콜**: 파일 작성 후 반드시 `cat` 또는 `head`로 내용 확인. f-string 중괄호, 백슬래시, 달러기호가 이스케이프됐는지 검증 후 진행
-- **VPS 코드베이스 확인**: 로컬 agent-nexus vs VPS nexus-finance-mcp 혼동 금지. 작업 대상 명시적 확인 후 시작
-- **인코딩 (반복 마찰 원인)**: 모든 파일 I/O에 `encoding='utf-8'` 명시. cp949 절대 가정 금지. VPS/WSL: `PYTHONIOENCODING=utf-8` 필수. 한글 경로 처리 시 pathlib 사용. Windows↔WSL↔VPS 간 인코딩 불일치 발생하면 즉시 UTF-8 강제 후 진행
-
-## Phase 체크포인트 (인사이트: 41% 세
+- **heredoc 검증 프로토콜**: 파일 작성 후 반드시 `cat` 또는 `head`로 내용 확인. f-string 
 
 ... [생략 — 원본: C:/Users/lch68/CLAUDE.md]
 ```
