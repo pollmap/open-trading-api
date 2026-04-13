@@ -49,6 +49,7 @@ class TerminalConfig:
     paper_mode: bool = True           # 모의매매 모드 (True=fills JSON만, False=KIS 실주문)
     kis_paper: bool = True            # KIS API 모드 (True=모의투자 API, False=실전투자 API)
     vault_path: Optional[Path] = None  # Obsidian Vault 경로
+    cufa_digests_dir: Optional[Path] = None  # STEP 3: CUFA digest JSON 자동 로드 디렉토리
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +200,14 @@ class LuxonTerminal:
                 log.warning("LiveOrderExecutor 초기화 실패 — paper 기록만 수행: %s", exc)
                 self._live_executor = None
 
-        # 8. 초기 매크로 레짐 갱신
+        # 8. CUFA digest → conviction 자동 주입 (STEP 3)
+        if self.config.cufa_digests_dir is not None:
+            try:
+                self._ingest_cufa_convictions()
+            except Exception as exc:
+                log.warning("CUFA conviction 주입 실패 (무시): %s", exc)
+
+        # 9. 초기 매크로 레짐 갱신
         initial_regime = self._refresh_macro_sync()
 
         self._initialized = True
@@ -573,6 +581,51 @@ class LuxonTerminal:
             json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
         )
         log.debug("paper 기록 저장: %s", out_path)
+
+    # ------------------------------------------------------------------
+    # STEP 3: CUFA → conviction 자동 주입
+    # ------------------------------------------------------------------
+
+    def _ingest_cufa_convictions(self) -> None:
+        """CUFA digest 디렉토리 → conviction 산출 → FeedbackAdapter에 저장.
+
+        선순환 입구: 사이클 시작 전에 conviction을 미리 저장해두면
+        cycle() step 4에서 load_persisted_convictions()로 자동 로드됨.
+        """
+        if self._feedback_adapter is None:
+            log.debug("FeedbackAdapter 없음 — CUFA conviction 스킵")
+            return
+
+        from kis_backtest.luxon.integration.cufa_conviction import (
+            build_convictions_from_digests,
+            load_cufa_digests_from_dir,
+        )
+
+        digests = load_cufa_digests_from_dir(self.config.cufa_digests_dir)
+        if not digests:
+            log.info(
+                "CUFA digest 없음 (%s) — conviction 주입 스킵",
+                self.config.cufa_digests_dir,
+            )
+            return
+
+        cufa_convictions = build_convictions_from_digests(digests)
+        if not cufa_convictions:
+            log.info("CUFA conviction 산출 실패 — 저장 스킵")
+            return
+
+        # 유니버스 기준 기존 conviction 로드 → CUFA 결과로 덮어쓰기 → 재저장
+        existing = self._feedback_adapter.load_persisted_convictions(
+            self.config.symbols
+        )
+        merged = dict(existing)
+        merged.update(cufa_convictions)
+        self._feedback_adapter.save_convictions(merged)
+        log.info(
+            "CUFA → conviction 주입: %d종목 (%s)",
+            len(cufa_convictions),
+            list(cufa_convictions.keys()),
+        )
 
     # ------------------------------------------------------------------
     # STEP 2: Live Execution (KIS 실 주문)
