@@ -37,6 +37,14 @@ def main() -> None:
         help="모든 종목 기본 확신도 1-10 (기본 5.0)",
     )
     parser.add_argument(
+        "--catalyst", action="append", default=[], metavar="TICKER:NAME:TYPE:DATE:PROB:IMPACT",
+        help=(
+            "카탈리스트 추가 (반복 가능). "
+            "예: --catalyst 005930:HBM4양산:INDUSTRY:2026-05-15:0.7:8.0 "
+            "DATE: YYYY-MM-DD  TYPE: EARNINGS|INDUSTRY|MACRO|REGULATORY|TECHNICAL"
+        ),
+    )
+    parser.add_argument(
         "--weekly", type=str, default=None, metavar="PATH",
         help="주간 레터를 지정 경로에 저장",
     )
@@ -64,6 +72,29 @@ def main() -> None:
 
     orch = LuxonOrchestrator(total_capital=args.capital)
     convictions = {s: args.conviction for s in args.symbols}
+
+    # --catalyst TICKER:NAME:TYPE:PROB:IMPACT 파싱 + 주입
+    if args.catalyst:
+        for raw in args.catalyst:
+            parts = raw.split(":")
+            if len(parts) != 6:
+                print(f"[warn] catalyst 형식 오류 (건너뜀): {raw}")
+                print("       형식: TICKER:NAME:TYPE:DATE:PROB:IMPACT")
+                print("       예시: 005930:HBM4양산:INDUSTRY:2026-05-15:0.7:8.0")
+                continue
+            ticker, name, ctype, date, prob, impact = parts
+            try:
+                orch.add_catalyst(
+                    symbol=ticker,
+                    name=name,
+                    catalyst_type=ctype.lower(),  # INDUSTRY → industry
+                    expected_date=date,
+                    probability=float(prob),
+                    impact=float(impact),
+                )
+                print(f"[catalyst] {ticker}: {name} ({ctype}) 예정={date} P={prob} I={impact}")
+            except Exception as e:
+                print(f"[warn] catalyst 추가 실패 {ticker}: {e}")
 
     if args.backtest or args.validate:
         import random

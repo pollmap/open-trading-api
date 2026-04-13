@@ -15,6 +15,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import sys
+from pathlib import Path
+
+# 어디서 실행해도 kis_backtest import 가능하게 backtester 루트 주입
+_BACKTESTER = Path(__file__).resolve().parent.parent
+if str(_BACKTESTER) not in sys.path:
+    sys.path.insert(0, str(_BACKTESTER))
 
 # Windows cp949 콘솔에서 한글/em-dash 출력 깨짐 방지
 if hasattr(sys.stdout, "reconfigure"):

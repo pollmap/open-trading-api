@@ -69,6 +69,9 @@ def setup_logging(run_id: str) -> logging.Logger:
     fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(fh)
 
+    # Windows cp949 콘솔 인코딩 깨짐 방지
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ch = logging.StreamHandler(sys.stdout)
     ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
     logger.addHandler(ch)
