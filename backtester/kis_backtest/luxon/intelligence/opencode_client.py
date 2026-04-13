@@ -73,15 +73,20 @@ class OpenCodeClient:
         return r.json()
 
     def _post_message(self, session_id: str, text: str, model: Optional[dict] = None) -> None:
+        """POST는 assistant 응답 완성까지 스트리밍 block. 짧은 connect 후 ReadTimeout 정상."""
         payload = {
             "parts": [{"type": "text", "text": text}],
             "model": model or DEFAULT_MODEL,
         }
-        httpx.post(
-            f"{self.base_url}/session/{session_id}/message",
-            json=payload,
-            timeout=self.timeout,
-        )
+        try:
+            httpx.post(
+                f"{self.base_url}/session/{session_id}/message",
+                json=payload,
+                timeout=httpx.Timeout(connect=5.0, read=2.0, write=5.0, pool=5.0),
+            )
+        except httpx.ReadTimeout:
+            # 예상 동작 — 메시지 전송은 완료, 생성은 비동기
+            pass
 
     def _fetch_messages(self, session_id: str) -> list[dict]:
         r = httpx.get(f"{self.base_url}/session/{session_id}/message", timeout=10.0)
