@@ -368,3 +368,77 @@ class TestMCPFetch:
         # base_rate + 4 ECOS + 4 FRED = 9 calls
         total_calls = mock_mcp.get_risk_free_rate.call_count + mock_mcp._call_vps_tool.call_count
         assert total_calls >= 9
+
+
+# ── 오프라인 캐시 폴백 테스트 ──────────────────────────────
+
+class TestOfflineCacheFallback:
+    """MCP 완전 오프라인 시 캐시된 레짐 반환 검증."""
+
+    def test_cached_regime_returned_when_no_live_data(self, tmp_path: Path):
+        """state_file에 저장된 regime이 있으면, 새 지표 데이터 없어도 캐시 반환."""
+        state_file = str(tmp_path / "macro.json")
+
+        # 1) 먼저 데이터 채워서 저장
+        d1 = MacroRegimeDashboard(state_file=state_file)
+        d1.update_indicator("기준금리", 2.75, 3.0)
+        d1.update_indicator("GDP 성장률", 2.5, 2.0)
+        d1.update_indicator("실업률", 3.5, 4.0)
+        d1.update_indicator("M2 통화량", 3500, 3400)
+        d1.update_indicator("CPI (소비자물가)", 2.0, 2.5)
+        result1 = d1.classify_regime()
+        assert result1.confidence > 0.0, "저장 전 confidence > 0 이어야 함"
+
+        # 2) 새 인스턴스 (state_file 로드) — MCP 데이터 추가 없이 classify
+        d2 = MacroRegimeDashboard(state_file=state_file)
+        result2 = d2.classify_regime()
+
+        # 캐시된 지표값(5개)으로 classify → confidence > 0
+        assert result2.confidence > 0.0, "오프라인 캐시에서 confidence > 0 이어야 함"
+
+    def test_offline_fallback_to_last_regime(self, tmp_path: Path):
+        """지표값 0개인 상황에서 last_regime 캐시가 있으면 폴백."""
+        state_file = str(tmp_path / "macro.json")
+
+        # 캐시에 last_regime 직접 기록
+        state_data = {
+            "version": 1,
+            "updated_at": "2026-01-01T00:00:00",
+            "indicators": {},
+            "last_regime": {
+                "regime": "expansion",
+                "confidence": 0.7,
+                "score": 5.0,
+                "positive_signals": 7,
+                "negative_signals": 1,
+                "neutral_signals": 2,
+            },
+        }
+        Path(state_file).write_text(
+            __import__("json").dumps(state_data, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
+        d = MacroRegimeDashboard(state_file=state_file)
+        result = d.classify_regime()
+
+        # 지표 0개이지만 last_regime 캐시로 폴백
+        assert result.regime.value == "expansion"
+        assert result.confidence == pytest.approx(0.7)
+
+    def test_no_state_file_still_returns_zero_confidence(self):
+        """state_file 없으면 기존 동작(confidence=0) 유지."""
+        d = MacroRegimeDashboard()  # state_file=None
+        result = d.classify_regime()
+        assert result.confidence == 0.0
+        assert result.regime == Regime.RECOVERY
+
+    def test_orchestrator_uses_default_state_file(self, tmp_path: Path, monkeypatch):
+        """LuxonOrchestrator 기본 생성 시 state_file이 설정됨."""
+        from kis_backtest.luxon import orchestrator as orch_mod
+        # 임시 경로로 override
+        monkeypatch.setattr(orch_mod, "_MACRO_STATE_FILE", str(tmp_path / "macro.json"))
+
+        from kis_backtest.luxon.orchestrator import LuxonOrchestrator
+        orc = LuxonOrchestrator()
+        assert orc.dashboard._state_file == str(tmp_path / "macro.json")

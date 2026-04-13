@@ -30,6 +30,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# MacroRegime 상태 파일 기본 경로 — MCP 오프라인 시 캐시 폴백용
+_MACRO_STATE_FILE = str(Path.home() / ".luxon" / "macro_regime_state.json")
+
 from kis_backtest.luxon.graph.edges import EdgeKind
 from kis_backtest.luxon.graph.graph import GothamGraph
 from kis_backtest.luxon.graph.ingestors.catalyst_ingestor import CatalystIngestor
@@ -142,7 +145,8 @@ class LuxonOrchestrator:
         self.tick_vault = tick_vault
         self.tracker = tracker if tracker is not None else CatalystTracker()
         self.dashboard = (
-            dashboard if dashboard is not None else MacroRegimeDashboard()
+            dashboard if dashboard is not None
+            else MacroRegimeDashboard(state_file=_MACRO_STATE_FILE)
         )
         self.sizer = sizer if sizer is not None else ConvictionSizer()
         self.total_capital = total_capital

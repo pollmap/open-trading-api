@@ -49,8 +49,10 @@ logging.basicConfig(
 logging.getLogger("kis_backtest.portfolio.mcp_data_provider").setLevel(logging.ERROR)
 log = logging.getLogger("luxon.server")
 
-FILL_DIR = BACKTESTER / "fills" / "paper"
-TICKET_DIR = BACKTESTER / "tickets" / "hourly"
+# LuxonTerminal._paper_record() 이 저장하는 경로와 동기화
+_LUXON_HOME = Path.home() / ".luxon"
+FILL_DIR = _LUXON_HOME / "fills" / "paper"
+TICKET_DIR = BACKTESTER / "tickets" / "hourly"  # 티켓은 프로젝트 내
 
 DEFAULT_SYMBOLS = ["005930", "000660", "035420", "373220", "207940"]
 TICKER_NAMES = {
@@ -324,10 +326,24 @@ class DataService:
         fills = _load_fills(12)
         tickets = _load_tickets(8)
 
+        # 레짐: OrchestrationReport > dashboard.classify_regime() 폴백 (캐시 포함)
+        regime_label = "N/A"
+        regime_conf = 0.0
+        if report:
+            regime_label = getattr(report, "regime", "N/A")
+            regime_conf = round(float(getattr(report, "regime_confidence", 0) or 0), 3)
+        else:
+            try:
+                cached = self._orch.dashboard.classify_regime()
+                regime_label = cached.regime.value
+                regime_conf = round(cached.confidence, 3)
+            except Exception:
+                pass
+
         return {
             "generated_at": datetime.now().isoformat(),
-            "regime": getattr(report, "regime", "N/A") if report else "N/A",
-            "regime_confidence": round(float(getattr(report, "regime_confidence", 0) or 0), 3),
+            "regime": regime_label,
+            "regime_confidence": regime_conf,
             "mcp_mode": self._mcp_mode,
             "mcp_connected": self._mcp is not None,
             "portfolio": portfolio_rows,

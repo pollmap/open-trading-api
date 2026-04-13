@@ -433,6 +433,14 @@ class MacroRegimeDashboard:
         valid_count = len(signals)
         confidence = valid_count / total_indicators if total_indicators else 0.0
 
+        # MCP 완전 오프라인(유효 지표 0개): 캐시된 레짐으로 폴백
+        if valid_count == 0 and self._last_regime is not None:
+            logger.warning(
+                "MCP 오프라인 — 캐시된 레짐 반환 (confidence=%.0f%%)",
+                self._last_regime.confidence * 100,
+            )
+            return self._last_regime
+
         # 위기 트리거 체크
         is_crisis = self._check_crisis_triggers()
 
@@ -574,6 +582,9 @@ class MacroRegimeDashboard:
                 "regime": self._last_regime.regime.value,
                 "confidence": self._last_regime.confidence,
                 "score": self._last_regime.score,
+                "positive_signals": self._last_regime.positive_signals,
+                "negative_signals": self._last_regime.negative_signals,
+                "neutral_signals": self._last_regime.neutral_signals,
             }
 
         path.write_text(
@@ -582,7 +593,7 @@ class MacroRegimeDashboard:
         )
 
     def _load(self, state_file: str) -> None:
-        """JSON 파일에서 상태 로드"""
+        """JSON 파일에서 상태 로드 (indicator 값 + last_regime 복원)."""
         path = Path(state_file)
         if not path.exists():
             return
@@ -591,6 +602,23 @@ class MacroRegimeDashboard:
             for name, item in data.get("indicators", {}).items():
                 if name in self._indicators:
                     self._indicators[name] = MacroIndicator(**item)
+            # last_regime 복원 — 오프라인 시 캐시 신뢰도 제공
+            cached = data.get("last_regime")
+            if cached and self._last_regime is None:
+                try:
+                    self._last_regime = RegimeResult(
+                        regime=Regime(cached["regime"]),
+                        confidence=float(cached.get("confidence", 0.0)),
+                        score=float(cached.get("score", 0.0)),
+                        positive_signals=int(cached.get("positive_signals", 0)),
+                        negative_signals=int(cached.get("negative_signals", 0)),
+                        neutral_signals=int(cached.get("neutral_signals", 0)),
+                        allocation=dict(
+                            REGIME_ALLOCATION.get(Regime(cached["regime"]), {})
+                        ),
+                    )
+                except Exception:
+                    pass
             logger.info("매크로 지표 %d개 로드 (%s)", len(self._indicators), state_file)
         except Exception as e:
             logger.warning("매크로 지표 로드 실패: %s", e)
