@@ -66,7 +66,9 @@ def _call_kis_mcp(
 
 def _vps_reachable() -> bool:
     try:
-        host = os.environ.get("MCP_VPS_HOST", "62.171.141.206")
+        host = os.environ.get("MCP_VPS_HOST", "")
+        if not host:
+            return False
         resp = httpx.get(f"http://{host}/health", timeout=5)
         return resp.status_code == 200
     except Exception:

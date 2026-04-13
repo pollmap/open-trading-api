@@ -50,6 +50,8 @@ class TerminalConfig:
     kis_paper: bool = True            # KIS API 모드 (True=모의투자 API, False=실전투자 API)
     vault_path: Optional[Path] = None  # Obsidian Vault 경로
     cufa_digests_dir: Optional[Path] = None  # STEP 3: CUFA digest JSON 자동 로드 디렉토리
+    sector_map: Optional[dict] = None        # C2 fix: {ticker: sector} 섹터 집중도 게이트용
+    enable_risk_gateway: bool = True         # C2 fix: cycle() 내 RiskGateway 자동 실행
 
 
 # ---------------------------------------------------------------------------
@@ -125,6 +127,7 @@ class LuxonTerminal:
         self._accuracy_tracker: Any = None
         self._orchestrator: Any = None
         self._live_executor: Any = None  # STEP 2: LiveOrderExecutor (paper_mode=False일 때만)
+        self._risk_gateway: Any = None    # C2 fix: RiskGateway (SEED+ 집중도 체크)
 
     # ------------------------------------------------------------------
     # 초기화
@@ -199,6 +202,14 @@ class LuxonTerminal:
             except Exception as exc:
                 log.warning("LiveOrderExecutor 초기화 실패 — paper 기록만 수행: %s", exc)
                 self._live_executor = None
+
+        # 7.5. C2 fix: RiskGateway stage-aware 생성
+        if self.config.enable_risk_gateway:
+            try:
+                self._risk_gateway = self._build_risk_gateway()
+            except Exception as exc:
+                log.warning("RiskGateway 초기화 실패 (건너뜀): %s", exc)
+                self._risk_gateway = None
 
         # 8. CUFA digest → conviction 자동 주입 (STEP 3)
         if self.config.cufa_digests_dir is not None:
@@ -319,6 +330,13 @@ class LuxonTerminal:
                     log.warning("live_execute 실패: %s", exc)
             else:
                 log.warning("paper_mode=False 이지만 LiveOrderExecutor 없음 — 주문 건너뜀")
+
+        # 6.5. CapitalLadder.update(equity) — 선순환 루프에서 빠졌던 핵심 연결 (C1 fix)
+        # ladder 승급 조건(기간/Sharpe/DD) 평가를 위해 매 사이클 equity 업데이트.
+        try:
+            self._update_ladder_equity()
+        except Exception as exc:
+            log.warning("CapitalLadder.update 실패 (무시): %s", exc)
 
         # 7. WeeklyReport 생성
         weekly_report = None
@@ -639,6 +657,43 @@ class LuxonTerminal:
         log.debug("paper 기록 저장: %s", out_path)
 
     # ------------------------------------------------------------------
+    # C1 fix: CapitalLadder equity 업데이트
+    # ------------------------------------------------------------------
+
+    def _update_ladder_equity(self) -> None:
+        """매 사이클 CapitalLadder에 현재 equity 반영.
+
+        equity 산출 우선순위:
+          1. paper_mode=False: brokerage.get_balance().total_equity
+          2. paper_mode=True: fills/paper 누적 수익 기반 추정 (미구현 시 config.capital)
+        """
+        if self._capital_ladder is None:
+            return
+
+        equity: Optional[float] = None
+
+        # 실주문 모드 → 브로커 잔고 조회
+        if not self.config.paper_mode and self._live_executor is not None:
+            try:
+                brokerage = self._live_executor._brokerage
+                balance = brokerage.get_balance()
+                equity = float(balance.total_equity or balance.total_cash)
+            except Exception as exc:
+                log.debug("브로커 잔고 조회 실패 — config.capital 사용: %s", exc)
+
+        # 페이퍼 모드 or 잔고 실패 → 기본 capital (추정 개선은 BREAK1 개선 항목)
+        if equity is None or equity <= 0:
+            equity = float(self.config.capital)
+
+        self._capital_ladder.update(equity)
+        log.debug(
+            "ladder.update: stage=%s equity=%.0f days_in_stage=%d",
+            self._capital_ladder.current_stage.name,
+            equity,
+            self._capital_ladder.days_in_stage,
+        )
+
+    # ------------------------------------------------------------------
     # STEP 3: CUFA → conviction 자동 주입
     # ------------------------------------------------------------------
 
@@ -713,6 +768,46 @@ class LuxonTerminal:
         log.info("LiveOrderExecutor 초기화 완료 (kis_paper=%s)", self.config.kis_paper)
         return executor
 
+    def _build_risk_gateway(self) -> Any:
+        """CapitalLadder 단계 기반 RiskGateway 생성 (C2 fix).
+
+        PAPER: 게이트 스킵 (max_symbol_weight=None)
+        SEED+: 종목 5%, 섹터 20% 상한 활성화
+        """
+        from kis_backtest.execution.risk_gateway import (
+            RiskGateway, SEED_MAX_SECTOR_WEIGHT, SEED_MAX_SYMBOL_WEIGHT,
+        )
+        from kis_backtest.execution.capital_ladder import Stage
+
+        stage = Stage.PAPER
+        if self._capital_ladder is not None:
+            try:
+                stage = self._capital_ladder.current_stage
+            except Exception:
+                pass
+
+        if stage == Stage.PAPER:
+            max_symbol = None
+            max_sector = None
+        else:
+            max_symbol = SEED_MAX_SYMBOL_WEIGHT
+            max_sector = SEED_MAX_SECTOR_WEIGHT
+
+        mode = "prod" if (not self.config.paper_mode) else "paper"
+        gateway = RiskGateway(
+            mode=mode,
+            kill_switch=self._kill_switch,
+            max_symbol_weight=max_symbol,
+            max_sector_weight=max_sector,
+            sector_map=self.config.sector_map,
+            require_market_hours=False,  # 자동 루프는 오프마켓에서도 돌아감
+        )
+        log.info(
+            "RiskGateway 초기화: mode=%s stage=%s max_symbol=%s max_sector=%s",
+            mode, stage.name, max_symbol, max_sector,
+        )
+        return gateway
+
     def _live_execute(self, orch_report: Any, decisions: list[dict]) -> None:
         """OrchestrationReport → PortfolioOrder → KIS 실 주문 + fills/live 기록."""
         import json
@@ -721,7 +816,34 @@ class LuxonTerminal:
             orch_report=orch_report,
             capital=self.config.capital,
             strategy_name=f"luxon-cycle-{self._cycle_num:04d}",
+            sector_map=self.config.sector_map,
         )
+
+        # C2 fix: RiskGateway dry-run 체크 (SEED+ 집중도 게이트)
+        if self._risk_gateway is not None:
+            try:
+                plan_report = self._live_executor.plan(portfolio_order)
+                balance = self._live_executor._brokerage.get_balance()
+                from kis_backtest.core.pipeline import PipelineResult
+                fake_pipe = PipelineResult(
+                    order=portfolio_order, risk_passed=True, risk_details=[],
+                    vol_adjustments={}, turb_index=0.0, dd_state=None,
+                    estimated_annual_cost=0.0, kelly_allocation=1.0,
+                )
+                decision = self._risk_gateway.check(
+                    planned_trades=plan_report.planned,
+                    balance=balance,
+                    pipeline_result=fake_pipe,
+                )
+                if not decision.approved:
+                    log.warning(
+                        "RiskGateway 차단 — live_execute 중단: %s",
+                        "; ".join(decision.blocked_trades) or "gate FAIL",
+                    )
+                    return
+            except Exception as exc:
+                log.warning("RiskGateway 체크 실패 (통과 처리): %s", exc)
+
         report = self._live_executor.execute(portfolio_order, dry_run=False)
 
         fill_dir = Path.home() / ".luxon" / "fills" / "live"
@@ -810,12 +932,14 @@ def _orch_to_portfolio_order(
     orch_report: Any,
     capital: float,
     strategy_name: str = "luxon-live",
+    sector_map: Optional[dict] = None,
 ) -> Any:
     """OrchestrationReport → PortfolioOrder 변환.
 
     - position_sizes의 weight → target_weight
     - portfolio.decisions의 action → OrderAction
-    - 기본 Market=KOSPI (KOSDAQ 구분은 향후 stock_info 참조로 확장)
+    - sector_map의 "KOSPI"/"KOSDAQ" 문자열 포함 여부로 Market 추론
+      (없으면 KOSPI 기본; M1 fix)
     """
     from kis_backtest.portfolio.mcp_bridge import (
         OrderAction,
@@ -828,6 +952,18 @@ def _orch_to_portfolio_order(
     )
 
     decision_map = {d.symbol: d for d in orch_report.portfolio.decisions}
+    sector_map = sector_map or {}
+
+    def _infer_market(symbol: str) -> Market:
+        """섹터 문자열에 'KOSDAQ'이 포함되면 KOSDAQ, 아니면 KOSPI."""
+        info = sector_map.get(symbol, "")
+        if isinstance(info, str) and "KOSDAQ" in info.upper():
+            return Market.KOSDAQ
+        if isinstance(info, dict):
+            m = info.get("market", "").upper()
+            if m == "KOSDAQ":
+                return Market.KOSDAQ
+        return Market.KOSPI
 
     allocations: list[Any] = []
     for ps in orch_report.position_sizes:
@@ -840,12 +976,18 @@ def _orch_to_portfolio_order(
         except ValueError:
             action = OrderAction.HOLD
         factor_score = float(getattr(dec, "catalyst_score", 0.0)) if dec else 0.0
+        sector_name = ""
+        if isinstance(sector_map.get(symbol), str):
+            sector_name = sector_map[symbol]
+        elif isinstance(sector_map.get(symbol), dict):
+            sector_name = sector_map[symbol].get("sector", "")
         allocations.append(StockAllocation(
             ticker=symbol,
             name=symbol,
-            market=Market.KOSPI,
+            market=_infer_market(symbol),
             target_weight=weight,
             factor_score=factor_score,
+            sector=sector_name,
             action=action,
         ))
 

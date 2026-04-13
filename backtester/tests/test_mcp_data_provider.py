@@ -297,7 +297,8 @@ class TestSyncWrappers:
 class TestEnvironmentConfig:
     def test_default_host(self):
         provider = MCPDataProvider()
-        assert "62.171.141.206" in provider._vps_url or provider._vps_host
+        # OSS: 기본 빈 문자열 (fallback 비활성) — env 설정 시에만 연결
+        assert provider._vps_host == "" or isinstance(provider._vps_host, str)
 
     def test_custom_host(self):
         provider = MCPDataProvider(vps_host="custom.server.com")

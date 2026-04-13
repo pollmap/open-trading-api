@@ -125,37 +125,78 @@ def compute_conviction_from_digest(digest: dict[str, Any]) -> CufaConviction | N
 def load_cufa_digests_from_dir(
     digests_dir: str | Path,
 ) -> list[dict[str, Any]]:
-    """디렉토리에서 CUFA digest JSON 파일들 로드.
+    """디렉토리에서 CUFA digest JSON/HTML 파일들 로드 (C3 fix).
 
     규칙:
-        - `*.json` 파일만 읽음
-        - 각 파일은 단일 digest dict (CUFA v14.1 표준 shape)
-        - 파싱 실패한 파일은 로깅 후 스킵 (선순환 유지)
+        - `*.json`: 단일 digest dict 그대로 로드
+        - `*.html`: `CufaHtmlParser`로 symbol/sector 추출 → 최소 dict 변환
+          (IP/Kill Condition은 HTML heuristic 한계로 JSON 병행 권장)
+        - 파싱 실패는 로깅 후 스킵 (선순환 유지)
 
     Args:
-        digests_dir: digest JSON 들이 있는 디렉토리.
+        digests_dir: digest 파일들이 있는 디렉토리.
 
     Returns:
-        성공적으로 로드된 digest dict 리스트. 디렉토리 없거나 비어있으면 빈 리스트.
+        digest dict 리스트. 빈 디렉토리면 빈 리스트.
     """
     path = Path(digests_dir).expanduser()
     if not path.exists() or not path.is_dir():
-        logger.debug("CUFA digest 디렉토리 없음: %s", path)
+        logger.debug("CUFA 소스 디렉토리 없음: %s", path)
         return []
 
     digests: list[dict[str, Any]] = []
+
+    # 1) JSON 우선 (상세 digest)
     for json_path in sorted(path.glob("*.json")):
         try:
             data = json.loads(json_path.read_text(encoding="utf-8"))
             if isinstance(data, dict):
                 digests.append(data)
             else:
-                logger.warning("CUFA digest %s: dict 아님 — 스킵", json_path.name)
+                logger.warning("CUFA JSON %s: dict 아님 — 스킵", json_path.name)
         except Exception as exc:
-            logger.warning("CUFA digest %s 로드 실패: %s", json_path.name, exc)
+            logger.warning("CUFA JSON %s 로드 실패: %s", json_path.name, exc)
 
-    logger.info("CUFA digest 로드 완료: %d개 (%s)", len(digests), path)
+    # 2) HTML fallback (symbol + sector만 최소 추출)
+    for html_path in sorted(path.glob("*.html")):
+        try:
+            digest = _html_to_minimal_digest(html_path)
+            if digest is not None:
+                # JSON에 이미 같은 symbol이 있으면 HTML은 스킵 (JSON 우선)
+                existing_symbols = {d.get("ticker") or d.get("symbol") for d in digests}
+                if digest.get("ticker") not in existing_symbols:
+                    digests.append(digest)
+        except Exception as exc:
+            logger.warning("CUFA HTML %s 파싱 실패: %s", html_path.name, exc)
+
+    logger.info("CUFA 소스 로드 완료: %d개 (%s)", len(digests), path)
     return digests
+
+
+def _html_to_minimal_digest(html_path: Path) -> dict[str, Any] | None:
+    """CUFA HTML → 최소 digest dict (C3 fix).
+
+    CufaHtmlParser로 symbol + sector만 추출. IP/Kill Condition은
+    HTML heuristic 정확도 문제로 생략 → conviction은 base 5.0 반환.
+    정확한 conviction을 원하면 CUFA 빌드 시 함께 JSON digest 생성 권장.
+    """
+    try:
+        from kis_backtest.luxon.graph.parsers.cufa_html_parser import (
+            CufaHtmlParser,
+        )
+    except ImportError:
+        logger.debug("CufaHtmlParser 미설치 — HTML 파일 스킵")
+        return None
+
+    parser = CufaHtmlParser()
+    parsed = parser.parse_file(html_path)
+    return {
+        "ticker": parsed.symbol,
+        "sector": parsed.sector,
+        "investment_points": [],  # HTML에서 IP 정확 추출 어려움 → 0
+        "kill_conditions": [],    # 동일
+        "_source": str(html_path.name),
+    }
 
 
 def build_convictions_from_digests(

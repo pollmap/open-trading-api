@@ -34,7 +34,7 @@ def _kis_backtest() -> MCPServerInfo:
 def _nexus_finance() -> MCPServerInfo:
     return MCPServerInfo(
         name="nexus-finance",
-        url=os.environ.get("NEXUS_MCP_URL", "https://62.171.141.206:8100"),
+        url=os.environ.get("NEXUS_MCP_URL", "http://127.0.0.1:8100"),
         transport="http",
         default_tier=Tier.HEAVY,
         token_env="MCP_VPS_TOKEN",

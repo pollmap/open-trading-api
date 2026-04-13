@@ -45,7 +45,7 @@ from kis_backtest.portfolio.mcp_connector import (
 logger = logging.getLogger(__name__)
 
 # 기본 설정 (환경변수로 오버라이드 가능)
-DEFAULT_VPS_HOST = os.environ.get("MCP_VPS_HOST", "62.171.141.206")
+DEFAULT_VPS_HOST = os.environ.get("MCP_VPS_HOST", "")  # OSS: 빈값=로컬만
 DEFAULT_VPS_TOKEN = os.environ.get("MCP_VPS_TOKEN", "")
 DEFAULT_KIS_MCP_URL = os.environ.get("KIS_MCP_URL", "http://127.0.0.1:3846/mcp")
 

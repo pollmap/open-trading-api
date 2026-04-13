@@ -32,7 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 # VPS 정보 (환경변수 우선, 미설정 시 기본값)
-MCP_VPS_HOST = os.environ.get("MCP_VPS_HOST", "62.171.141.206")
+MCP_VPS_HOST = os.environ.get("MCP_VPS_HOST", "")  # OSS: 빈값=VPS fallback 비활성
 MCP_HEALTH_URL = f"http://{MCP_VPS_HOST}/health"
 MCP_ENDPOINT = f"http://{MCP_VPS_HOST}/mcp"
 
