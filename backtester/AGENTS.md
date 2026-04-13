@@ -156,7 +156,7 @@ Luxon-Quarterly-Review    일 18:30 (분기말일만)
 - Conventional Commits: `feat(luxon): ...`, `fix(lean): ...`
 - 메시지 한국어 OK
 - Co-authored-by 금지
-- pollmap/open-trading-api 원격 (main 브랜치)
+- pollmap/luxon-terminal 원격 (main 브랜치)
 
 ---
 

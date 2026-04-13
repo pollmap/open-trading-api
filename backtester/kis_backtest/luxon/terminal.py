@@ -46,7 +46,8 @@ class TerminalConfig:
     mcp_host: str = "127.0.0.1:8100"
     mcp_token: str = ""
     refresh_secs: int = 3600          # 1시간마다 사이클
-    paper_mode: bool = True           # 모의매매 모드
+    paper_mode: bool = True           # 모의매매 모드 (True=fills JSON만, False=KIS 실주문)
+    kis_paper: bool = True            # KIS API 모드 (True=모의투자 API, False=실전투자 API)
     vault_path: Optional[Path] = None  # Obsidian Vault 경로
 
 
@@ -122,6 +123,7 @@ class LuxonTerminal:
         self._feedback_adapter: Any = None
         self._accuracy_tracker: Any = None
         self._orchestrator: Any = None
+        self._live_executor: Any = None  # STEP 2: LiveOrderExecutor (paper_mode=False일 때만)
 
     # ------------------------------------------------------------------
     # 초기화
@@ -189,7 +191,15 @@ class LuxonTerminal:
             log.error("LuxonOrchestrator 초기화 실패: %s", exc)
             self._orchestrator = None
 
-        # 7. 초기 매크로 레짐 갱신
+        # 7. LiveOrderExecutor (paper_mode=False일 때만 KIS 연결)
+        if not self.config.paper_mode:
+            try:
+                self._live_executor = self._build_live_executor()
+            except Exception as exc:
+                log.warning("LiveOrderExecutor 초기화 실패 — paper 기록만 수행: %s", exc)
+                self._live_executor = None
+
+        # 8. 초기 매크로 레짐 갱신
         initial_regime = self._refresh_macro_sync()
 
         self._initialized = True
@@ -287,12 +297,20 @@ class LuxonTerminal:
             except Exception as exc:
                 log.warning("run_workflow 실패: %s", exc)
 
-        # 6. execute_decisions (paper_mode)
-        if orch_report is not None and self.config.paper_mode:
-            try:
-                self._paper_record(orch_report, decisions)
-            except Exception as exc:
-                log.warning("paper_record 실패: %s", exc)
+        # 6. execute_decisions (paper_mode=True → JSON 기록, False → KIS 실 주문)
+        if orch_report is not None:
+            if self.config.paper_mode:
+                try:
+                    self._paper_record(orch_report, decisions)
+                except Exception as exc:
+                    log.warning("paper_record 실패: %s", exc)
+            elif self._live_executor is not None:
+                try:
+                    self._live_execute(orch_report, decisions)
+                except Exception as exc:
+                    log.warning("live_execute 실패: %s", exc)
+            else:
+                log.warning("paper_mode=False 이지만 LiveOrderExecutor 없음 — 주문 건너뜀")
 
         # 7. WeeklyReport 생성
         weekly_report = None
@@ -556,6 +574,85 @@ class LuxonTerminal:
         )
         log.debug("paper 기록 저장: %s", out_path)
 
+    # ------------------------------------------------------------------
+    # STEP 2: Live Execution (KIS 실 주문)
+    # ------------------------------------------------------------------
+
+    def _build_live_executor(self) -> Any:
+        """KIS 인증 → Brokerage/Data → LiveOrderExecutor 조립."""
+        import sys
+        # backtester 루트를 sys.path에 추가 (kis_auth.py 로드용)
+        _repo_root = Path(__file__).resolve().parents[3]
+        if str(_repo_root) not in sys.path:
+            sys.path.insert(0, str(_repo_root))
+
+        from kis_backtest.providers.kis.auth import KISAuth
+        from kis_backtest.providers.kis.brokerage import KISBrokerageProvider
+        from kis_backtest.providers.kis.data import KISDataProvider
+        from kis_backtest.execution.order_executor import LiveOrderExecutor
+
+        mode = "paper" if self.config.kis_paper else "live"
+        auth = KISAuth.from_env(mode=mode)
+        brokerage = KISBrokerageProvider.from_auth(auth)
+        data_provider = KISDataProvider(auth)
+        price_adapter = _KISPriceAdapter(data_provider)
+
+        executor = LiveOrderExecutor(
+            brokerage=brokerage,
+            price_provider=price_adapter,
+        )
+        log.info("LiveOrderExecutor 초기화 완료 (kis_paper=%s)", self.config.kis_paper)
+        return executor
+
+    def _live_execute(self, orch_report: Any, decisions: list[dict]) -> None:
+        """OrchestrationReport → PortfolioOrder → KIS 실 주문 + fills/live 기록."""
+        import json
+
+        portfolio_order = _orch_to_portfolio_order(
+            orch_report=orch_report,
+            capital=self.config.capital,
+            strategy_name=f"luxon-cycle-{self._cycle_num:04d}",
+        )
+        report = self._live_executor.execute(portfolio_order, dry_run=False)
+
+        fill_dir = Path.home() / ".luxon" / "fills" / "live"
+        fill_dir.mkdir(parents=True, exist_ok=True)
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        record = {
+            "recorded_at": datetime.now().isoformat(),
+            "cycle_num": self._cycle_num,
+            "regime": orch_report.regime,
+            "regime_confidence": orch_report.regime_confidence,
+            "executed": [
+                {
+                    "symbol": o.symbol,
+                    "side": o.side.value,
+                    "quantity": o.quantity,
+                    "order_id": o.id,
+                }
+                for o in report.executed
+            ],
+            "skipped": [
+                {"symbol": t.symbol, "reason": r} for t, r in report.skipped
+            ],
+            "rejected": [
+                {"symbol": t.symbol, "reason": r} for t, r in report.rejected
+            ],
+            "total_commission": report.total_commission,
+            "total_slippage_estimate": report.total_slippage_estimate,
+        }
+        out_path = fill_dir / f"cycle_{self._cycle_num:04d}_{ts}.json"
+        out_path.write_text(
+            json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        log.info(
+            "실 주문 실행: executed=%d skipped=%d rejected=%d commission=%.0f원",
+            len(report.executed),
+            len(report.skipped),
+            len(report.rejected),
+            report.total_commission,
+        )
+
     def _build_weekly_report(self, orch_report: Any) -> Any:
         """ReviewEngine으로 WeeklyReport 생성. orch_report 없으면 None."""
         if orch_report is None:
@@ -570,3 +667,89 @@ class LuxonTerminal:
         except Exception as exc:
             log.debug("WeeklyReport 생성 스킵 (trades 없음): %s", exc)
             return None
+
+
+# ---------------------------------------------------------------------------
+# STEP 2: Live Execution 어댑터 (모듈 레벨)
+# ---------------------------------------------------------------------------
+
+
+class _KISPriceAdapter:
+    """KISDataProvider.get_quote() → PriceProvider.get_current_price() 어댑터.
+
+    LiveOrderExecutor가 요구하는 PriceProvider Protocol을 구현.
+    KIS 호가 API의 bid/ask 중간가를 현재가로 사용.
+    """
+
+    def __init__(self, data_provider: Any) -> None:
+        self._data = data_provider
+
+    def get_current_price(self, symbol: str) -> float:
+        try:
+            quote = self._data.get_quote(symbol)
+            bid = float(getattr(quote, "bid_price", 0) or 0)
+            ask = float(getattr(quote, "ask_price", 0) or 0)
+            if bid > 0 and ask > 0:
+                return (bid + ask) / 2
+            return bid or ask or 0.0
+        except Exception as exc:
+            log.warning("현재가 조회 실패 %s: %s", symbol, exc)
+            return 0.0
+
+
+def _orch_to_portfolio_order(
+    orch_report: Any,
+    capital: float,
+    strategy_name: str = "luxon-live",
+) -> Any:
+    """OrchestrationReport → PortfolioOrder 변환.
+
+    - position_sizes의 weight → target_weight
+    - portfolio.decisions의 action → OrderAction
+    - 기본 Market=KOSPI (KOSDAQ 구분은 향후 stock_info 참조로 확장)
+    """
+    from kis_backtest.portfolio.mcp_bridge import (
+        OrderAction,
+        PortfolioOrder,
+        StockAllocation,
+    )
+    from kis_backtest.strategies.risk.cost_model import (
+        KoreaTransactionCostModel,
+        Market,
+    )
+
+    decision_map = {d.symbol: d for d in orch_report.portfolio.decisions}
+
+    allocations: list[Any] = []
+    for ps in orch_report.position_sizes:
+        symbol = ps.symbol
+        weight = float(ps.weight)
+        dec = decision_map.get(symbol)
+        action_str = (dec.action.upper() if dec and dec.action else "HOLD")
+        try:
+            action = OrderAction(action_str)
+        except ValueError:
+            action = OrderAction.HOLD
+        factor_score = float(getattr(dec, "catalyst_score", 0.0)) if dec else 0.0
+        allocations.append(StockAllocation(
+            ticker=symbol,
+            name=symbol,
+            market=Market.KOSPI,
+            target_weight=weight,
+            factor_score=factor_score,
+            action=action,
+        ))
+
+    return PortfolioOrder(
+        strategy_name=strategy_name,
+        created_at=datetime.now(),
+        total_capital=capital,
+        allocations=allocations,
+        cash_weight=float(orch_report.portfolio.cash_weight),
+        cost_model=KoreaTransactionCostModel(),
+        estimated_annual_cost=0.0,
+        kelly_fraction=1.0,
+        risk_gate_passed=True,
+        risk_gate_details=[],
+        rebalance_frequency="cycle",
+    )
