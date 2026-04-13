@@ -56,10 +56,11 @@ class StageConfig:
     label: str              # 표시 이름
 
 
-# 기본 래더 단계 설정
+# 기본 래더 단계 설정 (v0.8 STEP 4: PAPER→SEED 기준 강화)
+# PAPER 단계에서 SEED로 승격하려면 4주(20일) + OOS Sharpe≥0.5 + MaxDD>-10%
 DEFAULT_STAGES: List[StageConfig] = [
-    StageConfig(Stage.PAPER, 0.00, 20, 0.0,  -0.15, "모의투자"),
-    StageConfig(Stage.SEED,  0.10, 20, 0.2,  -0.10, "시드 10%"),
+    StageConfig(Stage.PAPER, 0.00, 20, 0.5,  -0.10, "모의투자"),
+    StageConfig(Stage.SEED,  0.10, 20, 0.5,  -0.10, "시드 10%"),
     StageConfig(Stage.GROWTH, 0.30, 15, 0.3, -0.08, "성장 30%"),
     StageConfig(Stage.SCALE, 0.60, 10, 0.4,  -0.07, "스케일 60%"),
     StageConfig(Stage.FULL,  1.00,  0, 0.0,   0.00, "전액 100%"),
@@ -352,6 +353,89 @@ class CapitalLadder:
             promote_blockers=blockers,
             history=self._history,
         )
+
+    def promote_if_wf_passed(
+        self,
+        wf_result: Any,
+        min_oos_sharpe: float = 0.5,
+        max_oos_dd: float = -0.10,
+    ) -> Optional[str]:
+        """WFResult 기반 자동 승급 (v0.8 STEP 4).
+
+        Walk-Forward OOS 통과 시 CapitalLadder 승급을 트리거.
+        일반 can_promote()의 equity 기반 체크와 별개로, Walk-Forward 전용 경로.
+
+        Args:
+            wf_result: WFResult 인스턴스 (kis_backtest.core.walk_forward.WFResult).
+                oos_mean_sharpe, oos_worst_dd, passed 속성 필요.
+            min_oos_sharpe: 승급 최소 OOS Sharpe (기본 0.5).
+            max_oos_dd: 승급 최대 OOS MaxDD (기본 -10%, DD가 이보다 깊으면 차단).
+
+        Returns:
+            승급 결과 메시지 (승급됐을 때) 또는 None (조건 미달/최고단계).
+        """
+        if self._stage_idx >= len(self._config.stages) - 1:
+            return None  # 이미 FULL
+
+        oos_sharpe = float(getattr(wf_result, "oos_mean_sharpe", 0.0))
+        oos_dd = float(getattr(wf_result, "oos_worst_dd", 0.0))
+        wf_passed = bool(getattr(wf_result, "passed", False))
+
+        blockers: List[str] = []
+        if not wf_passed:
+            blockers.append(f"WF 종합 FAIL: {getattr(wf_result, 'verdict', 'N/A')}")
+        if oos_sharpe < min_oos_sharpe:
+            blockers.append(
+                f"OOS Sharpe 부족: {oos_sharpe:.3f} < {min_oos_sharpe}"
+            )
+        if oos_dd < max_oos_dd:
+            blockers.append(
+                f"OOS MaxDD 초과: {oos_dd:.1%} < {max_oos_dd:.1%}"
+            )
+        # 최소 기간도 기존 config 기준 유지
+        cfg = self.current_stage_config
+        if self.days_in_stage < cfg.min_days:
+            blockers.append(
+                f"기간 부족: {self.days_in_stage}/{cfg.min_days}일"
+            )
+
+        if blockers:
+            logger.info(
+                "promote_if_wf_passed 차단 (%s): %s",
+                self.current_stage.name, "; ".join(blockers),
+            )
+            return None
+
+        # force 승급 (WF가 이미 근거 제시함)
+        old_stage = self.current_stage
+        self._stage_idx += 1
+        self._stage_start_idx = len(self._equity_history)
+        self._peak_equity = (
+            self._equity_history[-1].equity
+            if self._equity_history else self._config.total_capital
+        )
+        new_stage = self.current_stage
+        reason = (
+            f"WF 통과 승급: OOS Sharpe={oos_sharpe:.3f}, "
+            f"OOS DD={oos_dd:.1%}"
+        )
+        self._history.append(StageHistory(
+            stage=new_stage,
+            action="promote",
+            timestamp=datetime.now().isoformat(),
+            reason=reason,
+            sharpe=oos_sharpe,
+            max_dd=oos_dd,
+            days_in_stage=self.days_in_stage,
+        ))
+        self._save_state()
+        msg = (
+            f"WF 승급: {old_stage.name} → {new_stage.name}"
+            f"({self.current_stage_config.label}) | "
+            f"배포: {self.deployed_capital:,.0f}원 | {reason}"
+        )
+        logger.info(msg)
+        return msg
 
     def get_pipeline_capital(self) -> float:
         """PipelineConfig.total_capital에 전달할 값
