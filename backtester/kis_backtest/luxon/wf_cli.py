@@ -21,8 +21,9 @@ def _parse_args() -> argparse.Namespace:
         prog="luxon-wf",
         description="Walk-Forward OOS validator with CapitalLadder promotion",
     )
-    p.add_argument("--equity-file", required=True,
-                   help="Equity curve JSON file")
+    # --version must be checkable without --equity-file
+    p.add_argument("--equity-file", required=False,
+                   help="Equity curve JSON file (required unless --version)")
     p.add_argument("--n-folds", type=int, default=5)
     p.add_argument("--train-ratio", type=float, default=0.7)
     p.add_argument("--min-oos-sharpe", type=float, default=0.5)
@@ -59,6 +60,10 @@ def main() -> int:
         from kis_backtest import __version__
         print(f"luxon-wf {__version__}")
         return 0
+
+    if not args.equity_file:
+        print("error: --equity-file is required (unless --version)")
+        return 2
 
     logging.basicConfig(level=logging.INFO,
                         format="%(asctime)s [%(levelname)s] %(message)s")
