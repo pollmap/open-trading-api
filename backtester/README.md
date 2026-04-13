@@ -124,6 +124,81 @@ npm run dev
 | 리스크 파이프라인 | Vol 타겟팅 + DD 가드 + Kelly 사이징 + VPIN |
 | GothamGraph | 6노드/5엣지 지식 그래프 (종목-이벤트-인물 관계) |
 | 모의/실전 매매 | KIS 모의투자 + 실전 (3중 안전장치: KillSwitch+RiskGateway+CapitalLadder) |
+| **Luxon Intelligence** | **로컬 LLM 4-티어 + MCP 브리지 + agentic loop (Claude API 의존 제거)** |
+
+---
+
+## Luxon Intelligence — 로컬 LLM 완전 스택 (Sprint A-H)
+
+CUFA 보고서 · 시그널 분석 · MCP 오케스트레이션 전 과정을 로컬 LLM(Ollama/FastFlowLM/KoboldCpp)으로 수행. **Claude API 호출 0, 전력비 월 ₩72~432 수준.**
+
+### 바벨 4-티어 구조
+
+| 티어 | 런타임 | 모델 | ctx | 용도 |
+|------|--------|------|-----|------|
+| **FAST** | FastFlowLM NPU | qwen3.5:4b | 4k | 시그널·알림·분류 (2W) |
+| **DEFAULT** | Ollama CPU | qwen3:14b | 16k | 일반 작업 기본값 |
+| **HEAVY** | Ollama CPU | gemma4:26b | 8k (KV q8) | 정밀·반증·Kill condition |
+| **LONG** | KoboldCpp iGPU | gemma4-e4b | 32k | 긴 문서·RAG (수동/실험) |
+
+### 빠른 시작 — 3개 명령
+
+```bash
+# 1. 전 스택 자동 기동 + 헬스 + 워밍업
+python -m kis_backtest.luxon.intelligence bootstrap
+
+# 2. 질문 한 방
+python -m kis_backtest.luxon.intelligence ask "2026 조선업 전망" --tier HEAVY
+
+# 3. CUFA 보고서 풀 자동 빌드
+python -m kis_backtest.luxon.intelligence cufa \
+    --config=./samples/hhi_config.py \
+    --out=./output/hhi.html
+```
+
+### 7개 CLI 서브명령
+
+| 명령 | 기능 |
+|------|------|
+| `bootstrap` | 스택 자동 기동 + 헬스체크 + 워밍업 + MCP 프로빙 |
+| `health` | 4티어 빠른 상태 스캔 |
+| `security` | 토큰/엔드포인트/인자 보안 preflight |
+| `bench` | 3티어 TPS/레이턴시 실측 |
+| `ask` | 단일 프롬프트 (tier 선택) |
+| `agent` | MCP tool-calling agentic loop |
+| `cufa` | CUFA v16 보고서 풀 빌드 (Evaluator 12/12 PASS 자동 루프) |
+
+### 주요 파일
+
+```
+kis_backtest/luxon/intelligence/
+├── router.py        # 바벨 4-티어 + tool-calling
+├── bootstrap.py     # 자동 기동 + 워밍업
+├── security.py      # 토큰 redact / 엔드포인트 감사 / arg sanitize
+├── cli.py           # 7 서브명령
+├── mcp_bridge.py    # MCP JSON-RPC 2.0 + OpenAI schema 변환
+├── agentic.py       # Tool-calling 루프 (max_steps 가드)
+├── tasks/           # signal, catalyst, cufa_narrative, evaluator_repair
+├── prompts/         # 9개 .md 템플릿
+└── tests/           # 123 tests, coverage 88%
+```
+
+### 환경 설정
+
+```bash
+# 1. .env 복사 + 편집
+cp .env.example .env
+# .env에 MCP_VPS_TOKEN 등 입력
+
+# 2. (Windows) 로컬 LLM 자동 기동 등록
+powershell -ExecutionPolicy Bypass -File scripts/install_scheduler.ps1
+
+# 3. 샘플 config 기반 보고서 빌드
+python -m kis_backtest.luxon.intelligence cufa \
+    --config=./samples/hhi_config.py --out=./output/hhi.html
+```
+
+상세 사용법: [docs/LUXON_INTELLIGENCE.md](docs/LUXON_INTELLIGENCE.md) (상주 가이드).
 
 ---
 
