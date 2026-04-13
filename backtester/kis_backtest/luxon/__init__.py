@@ -1,27 +1,28 @@
-"""
-Luxon Terminal — 1인 AI 헤지펀드 × AaaS 퀀트 OS
+"""Luxon Terminal — AI quant trading loop.
 
-서브패키지 구조:
-    luxon/stream/       — Maven 레이어 (실시간 데이터 허브)
-    luxon/ontology/     — Gotham 레이어 (엔티티 그래프) [Phase 2]
-    luxon/intelligence/ — AIP 레이어 (LLM 에이전트) [Phase 2]
-    luxon/ui/           — UI 레이어 (TUI + Chart + Web) [Phase 3]
+Top-level facade:
+    >>> from kis_backtest.luxon import LuxonTerminal, TerminalConfig
+    >>> terminal = LuxonTerminal(symbols=["005930", "000660"])
+    >>> terminal.boot()
+    >>> report = terminal.cycle()
+    >>> print(report.summary())
 
-설계 원칙:
-    1. 기존 portfolio/execution/providers 모듈 무수정, 사이드카 확장
-    2. 모든 주문 경로는 RiskGateway → KillSwitch → CapitalLadder 강제 통과
-    3. 6-에이전트 병렬 개발 팩 + A7 감사 프로토콜
-    4. 실데이터 절대 원칙, 목업 금지
+Sub-packages:
+    stream/       — data hub (FRED, TickVault)
+    graph/        — entity graph (GothamGraph)
+    integration/  — CUFA → conviction bridge + Phase 1 pipeline
+    intelligence/ — MCP bridge + LLM router (optional)
 
-참조:
-    플랜: C:\\Users\\lch68\\.claude\\plans\\valiant-honking-simon.md
-    세션 시작일: 2026-04-11
+Design principles:
+    - Existing portfolio/execution/providers untouched, extended via adapters
+    - All order paths enforce RiskGateway → KillSwitch → CapitalLadder
+    - Real data only (no mocks in production paths)
 """
 from __future__ import annotations
 
 import logging
 
-__version__ = "0.1.0-sprint1-t0"
+__version__ = "1.0.0"
 
 log = logging.getLogger(__name__)
 
@@ -71,7 +72,27 @@ except Exception as _e:  # pragma: no cover
 # 공개 API 목록
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Integration (CUFA + Phase1Pipeline)
+# ---------------------------------------------------------------------------
+
+try:
+    from kis_backtest.luxon.integration.cufa_conviction import (  # noqa: E402
+        CufaConviction,
+        build_convictions_from_digests,
+        compute_conviction_from_digest,
+        load_cufa_digests_from_dir,
+    )
+except Exception as _e:  # pragma: no cover
+    log.debug("CUFA integration import 실패: %s", _e)
+    CufaConviction = None  # type: ignore[assignment,misc]
+
+# ---------------------------------------------------------------------------
+# 공개 API
+# ---------------------------------------------------------------------------
+
 __all__: list[str] = [
+    "__version__",
     # Terminal
     "LuxonTerminal",
     "TerminalConfig",
@@ -85,4 +106,9 @@ __all__: list[str] = [
     "TASignalIngestor",
     "TASignal",
     "SignalAccuracyTracker",
+    # Integration (CUFA)
+    "CufaConviction",
+    "compute_conviction_from_digest",
+    "load_cufa_digests_from_dir",
+    "build_convictions_from_digests",
 ]

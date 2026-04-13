@@ -1,12 +1,12 @@
-# Luxon AI Quant System — Architecture & Design
+# Luxon Terminal — Architecture & Design
 
-> **버전**: v0.4α | **테스트**: 907+ PASS | **도구**: MCP 398개 | **GitHub**: pollmap/luxon-terminal
+> **버전**: v1.0 | **테스트**: 960+ PASS | **MCP 도구** (옵션): 398개
 
 ---
 
 ## 1. 한 문장 요약
 
-**MCP 398개 금융 도구로 데이터를 수집하고, 학술 기반 리스크 모듈로 검증하고, 개인투자자 제약을 반영해서, 실제 KIS API로 주문을 실행하는 1인 AI 퀀트 운용 시스템.**
+**MCP 금융 도구로 데이터를 수집하고, 학술 기반 리스크 모듈로 검증하고, 개인투자자 제약을 반영해서, 증권사 API로 주문을 실행하는 AI 퀀트 운용 오픈소스 시스템.**
 
 ---
 
@@ -748,4 +748,4 @@ tests/luxon/
 
 ---
 
-*Luxon AI Quant System v0.4α | 907+ tests | MCP 398 tools | pollmap/luxon-terminal*
+*Luxon Terminal v1.0 — MIT License*

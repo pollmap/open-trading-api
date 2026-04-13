@@ -1,0 +1,69 @@
+name: 🐛 Bug report
+description: Report a bug in Luxon Terminal
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Do not report security issues here.** See [SECURITY.md](../blob/main/backtester/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Luxon Terminal version
+      placeholder: "1.0.0 (from `luxon-run --version`)"
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "3.11.7"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Linux
+        - macOS
+        - Windows
+        - WSL2
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Clear description of the bug
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `luxon-run --max-cycles 1`
+        2. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / traceback
+      render: shell
+
+  - type: checkboxes
+    id: mode
+    attributes:
+      label: Execution mode
+      options:
+        - label: Paper mode (no real orders)
+        - label: Live mode (KIS paper API)
+        - label: Live mode (KIS production API)
