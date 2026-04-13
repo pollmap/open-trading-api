@@ -1,0 +1,53 @@
+__pycache__/
+*.py[cod]
+*.so
+.Python
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+*.egg-info/
+build/
+dist/
+site/
+
+# Runtime state (mounted via volume, not image)
+fills/
+data/
+.luxon/
+~/.luxon/
+
+# Legacy / internal
+legacy/
+.master/
+KIS/
+tests/
+docs/
+.github/
+
+# Config (never bake into image)
+.env
+.env.*
+kis_devlp.yaml
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Docs artifacts
+*.md
+!README.md
+!LICENSE
+
+# Frontend
+frontend/
+node_modules/

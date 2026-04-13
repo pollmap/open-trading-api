@@ -1,0 +1,349 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script>function neighbourhoodHighlight(params) {
+  // console.log("in nieghbourhoodhighlight");
+  allNodes = nodes.get({ returnType: "Object" });
+  // originalNodes = JSON.parse(JSON.stringify(allNodes));
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    highlightActive = true;
+    var i, j;
+    var selectedNode = params.nodes[0];
+    var degrees = 2;
+
+    // mark all nodes as hard to read.
+    for (let nodeId in allNodes) {
+      // nodeColors[nodeId] = allNodes[nodeId].color;
+      allNodes[nodeId].color = "rgba(200,200,200,0.5)";
+      if (allNodes[nodeId].hiddenLabel === undefined) {
+        allNodes[nodeId].hiddenLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+    var connectedNodes = network.getConnectedNodes(selectedNode);
+    var allConnectedNodes = [];
+
+    // get the second degree nodes
+    for (i = 1; i < degrees; i++) {
+      for (j = 0; j < connectedNodes.length; j++) {
+        allConnectedNodes = allConnectedNodes.concat(
+          network.getConnectedNodes(connectedNodes[j])
+        );
+      }
+    }
+
+    // all second degree nodes get a different color and their label back
+    for (i = 0; i < allConnectedNodes.length; i++) {
+      // allNodes[allConnectedNodes[i]].color = "pink";
+      allNodes[allConnectedNodes[i]].color = "rgba(150,150,150,0.75)";
+      if (allNodes[allConnectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[allConnectedNodes[i]].label =
+          allNodes[allConnectedNodes[i]].hiddenLabel;
+        allNodes[allConnectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // all first degree nodes get their own color and their label back
+    for (i = 0; i < connectedNodes.length; i++) {
+      // allNodes[connectedNodes[i]].color = undefined;
+      allNodes[connectedNodes[i]].color = nodeColors[connectedNodes[i]];
+      if (allNodes[connectedNodes[i]].hiddenLabel !== undefined) {
+        allNodes[connectedNodes[i]].label =
+          allNodes[connectedNodes[i]].hiddenLabel;
+        allNodes[connectedNodes[i]].hiddenLabel = undefined;
+      }
+    }
+
+    // the main node gets its own color and its label back.
+    // allNodes[selectedNode].color = undefined;
+    allNodes[selectedNode].color = nodeColors[selectedNode];
+    if (allNodes[selectedNode].hiddenLabel !== undefined) {
+      allNodes[selectedNode].label = allNodes[selectedNode].hiddenLabel;
+      allNodes[selectedNode].hiddenLabel = undefined;
+    }
+  } else if (highlightActive === true) {
+    // console.log("highlightActive was true");
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      // allNodes[nodeId].color = "purple";
+      allNodes[nodeId].color = nodeColors[nodeId];
+      // delete allNodes[nodeId].color;
+      if (allNodes[nodeId].hiddenLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].hiddenLabel;
+        allNodes[nodeId].hiddenLabel = undefined;
+      }
+    }
+    highlightActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    // console.log("Nothing was selected");
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        // console.log(allNodes[nodeId]);
+        // allNodes[nodeId].color = {};
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function filterHighlight(params) {
+  allNodes = nodes.get({ returnType: "Object" });
+  // if something is selected:
+  if (params.nodes.length > 0) {
+    filterActive = true;
+    let selectedNodes = params.nodes;
+
+    // hiding all nodes and saving the label
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = true;
+      if (allNodes[nodeId].savedLabel === undefined) {
+        allNodes[nodeId].savedLabel = allNodes[nodeId].label;
+        allNodes[nodeId].label = undefined;
+      }
+    }
+
+    for (let i=0; i < selectedNodes.length; i++) {
+      allNodes[selectedNodes[i]].hidden = false;
+      if (allNodes[selectedNodes[i]].savedLabel !== undefined) {
+        allNodes[selectedNodes[i]].label = allNodes[selectedNodes[i]].savedLabel;
+        allNodes[selectedNodes[i]].savedLabel = undefined;
+      }
+    }
+
+  } else if (filterActive === true) {
+    // reset all nodes
+    for (let nodeId in allNodes) {
+      allNodes[nodeId].hidden = false;
+      if (allNodes[nodeId].savedLabel !== undefined) {
+        allNodes[nodeId].label = allNodes[nodeId].savedLabel;
+        allNodes[nodeId].savedLabel = undefined;
+      }
+    }
+    filterActive = false;
+  }
+
+  // transform the object into an array
+  var updateArray = [];
+  if (params.nodes.length > 0) {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  } else {
+    for (let nodeId in allNodes) {
+      if (allNodes.hasOwnProperty(nodeId)) {
+        updateArray.push(allNodes[nodeId]);
+      }
+    }
+    nodes.update(updateArray);
+  }
+}
+
+function selectNode(nodes) {
+  network.selectNodes(nodes);
+  neighbourhoodHighlight({ nodes: nodes });
+  return nodes;
+}
+
+function selectNodes(nodes) {
+  network.selectNodes(nodes);
+  filterHighlight({nodes: nodes});
+  return nodes;
+}
+
+function highlightFilter(filter) {
+  let selectedNodes = []
+  let selectedProp = filter['property']
+  if (filter['item'] === 'node') {
+    let allNodes = nodes.get({ returnType: "Object" });
+    for (let nodeId in allNodes) {
+      if (allNodes[nodeId][selectedProp] && filter['value'].includes((allNodes[nodeId][selectedProp]).toString())) {
+        selectedNodes.push(nodeId)
+      }
+    }
+  }
+  else if (filter['item'] === 'edge'){
+    let allEdges = edges.get({returnType: 'object'});
+    // check if the selected property exists for selected edge and select the nodes connected to the edge
+    for (let edge in allEdges) {
+      if (allEdges[edge][selectedProp] && filter['value'].includes((allEdges[edge][selectedProp]).toString())) {
+        selectedNodes.push(allEdges[edge]['from'])
+        selectedNodes.push(allEdges[edge]['to'])
+      }
+    }
+  }
+  selectNodes(selectedNodes)
+}</script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+            
+            
+            
+            
+            
+
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 800px;
+                 background-color: #1a1a1a;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body><div style="background:#1a1a1a;color:#e0e0e0;font-family:system-ui,-apple-system,sans-serif;margin:0;padding:0;padding:1rem 1.5rem;"><h1 style="margin:0;color:#e0e0e0;font-size:1.5rem;">Luxon Watchlist</h1><p style="margin:0.25rem 0 0;color:#888;font-size:0.9rem;">40 nodes · 30 edges</p></div>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:006800", "label": "006800", "shape": "dot", "title": "\u003cb\u003esymbol:006800\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 006800"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ubc15\ud604\uc8fc", "label": "\ubc15\ud604\uc8fc", "shape": "dot", "title": "\u003cb\u003eperson:\ubc15\ud604\uc8fc\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ubc15\ud604\uc8fc\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uacf5\ub3d9", "label": "\uacf5\ub3d9", "shape": "dot", "title": "\u003cb\u003eperson:\uacf5\ub3d9\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uacf5\ub3d9\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uae40\ubbf8\uc12d", "label": "\uae40\ubbf8\uc12d", "shape": "dot", "title": "\u003cb\u003eperson:\uae40\ubbf8\uc12d\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uae40\ubbf8\uc12d\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ud5c8\uc120\ud638", "label": "\ud5c8\uc120\ud638", "shape": "dot", "title": "\u003cb\u003eperson:\ud5c8\uc120\ud638\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ud5c8\uc120\ud638\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:017670", "label": "017670", "shape": "dot", "title": "\u003cb\u003esymbol:017670\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 017670"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc2e0\uc784", "label": "\uc2e0\uc784", "shape": "dot", "title": "\u003cb\u003eperson:\uc2e0\uc784\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc2e0\uc784\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ucd5c\ud0dc\uc6d0", "label": "\ucd5c\ud0dc\uc6d0", "shape": "dot", "title": "\u003cb\u003eperson:\ucd5c\ud0dc\uc6d0\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ucd5c\ud0dc\uc6d0\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc815\uc7ac\ud5cc", "label": "\uc815\uc7ac\ud5cc", "shape": "dot", "title": "\u003cb\u003eperson:\uc815\uc7ac\ud5cc\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc815\uc7ac\ud5cc\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc720\uc601\uc0c1", "label": "\uc720\uc601\uc0c1", "shape": "dot", "title": "\u003cb\u003eperson:\uc720\uc601\uc0c1\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc720\uc601\uc0c1\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:035420", "label": "035420", "shape": "dot", "title": "\u003cb\u003esymbol:035420\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 035420"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc544\uc2dc\uc544", "label": "\uc544\uc2dc\uc544", "shape": "dot", "title": "\u003cb\u003eperson:\uc544\uc2dc\uc544\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc544\uc2dc\uc544\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:035900", "label": "035900", "shape": "dot", "title": "\u003cb\u003esymbol:035900\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 035900"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc218\uc775\ub825\uc744", "label": "\uc218\uc775\ub825\uc744", "shape": "dot", "title": "\u003cb\u003eperson:\uc218\uc775\ub825\uc744\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc218\uc775\ub825\uc744\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:044450", "label": "044450", "shape": "dot", "title": "\u003cb\u003esymbol:044450\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 044450"}, {"font": {"color": "#e0e0e0"}, "group": "sector", "id": "sector:40\ub144", "label": "40\ub144", "shape": "dot", "title": "\u003cb\u003esector:40\ub144\u003c/b\u003e\u003cbr\u003ekind: sector\u003cbr\u003ename: 40\ub144\u003cbr\u003ekrx_code: None"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ubc15\uc885\uaddc", "label": "\ubc15\uc885\uaddc", "shape": "dot", "title": "\u003cb\u003eperson:\ubc15\uc885\uaddc\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ubc15\uc885\uaddc\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ubc84\ub9ac\uc9c0\uac00", "label": "\ubc84\ub9ac\uc9c0\uac00", "shape": "dot", "title": "\u003cb\u003eperson:\ubc84\ub9ac\uc9c0\uac00\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ubc84\ub9ac\uc9c0\uac00\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ubc15\uaddc\ud638", "label": "\ubc15\uaddc\ud638", "shape": "dot", "title": "\u003cb\u003eperson:\ubc15\uaddc\ud638\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ubc15\uaddc\ud638\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "theme", "id": "theme:\uac00\uc2a4 \uae00\ub85c\ub9ac\uc544\uc758 \ud6c4\uc608\ub4e4", "label": "\uac00\uc2a4 \uae00\ub85c\ub9ac\uc544\uc758 \ud6c4\uc608\ub4e4", "shape": "dot", "title": "\u003cb\u003etheme:\uac00\uc2a4 \uae00\ub85c\ub9ac\uc544\uc758 \ud6c4\uc608\ub4e4\u003c/b\u003e\u003cbr\u003ekind: theme\u003cbr\u003ename: \uac00\uc2a4 \uae00\ub85c\ub9ac\uc544\uc758 \ud6c4\uc608\ub4e4\u003cbr\u003edescription: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:100090", "label": "100090", "shape": "dot", "title": "\u003cb\u003esymbol:100090\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 100090"}, {"font": {"color": "#e0e0e0"}, "group": "sector", "id": "sector:\ud574\uc0c1\ud48d\ub825 \ud558\ubd80\uad6c\uc870\ubb3c", "label": "\ud574\uc0c1\ud48d\ub825 \ud558\ubd80\uad6c\uc870\ubb3c", "shape": "dot", "title": "\u003cb\u003esector:\ud574\uc0c1\ud48d\ub825 \ud558\ubd80\uad6c\uc870\ubb3c\u003c/b\u003e\u003cbr\u003ekind: sector\u003cbr\u003ename: \ud574\uc0c1\ud48d\ub825 \ud558\ubd80\uad6c\uc870\ubb3c\u003cbr\u003ekrx_code: None"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uac15\uc601\uaddc", "label": "\uac15\uc601\uaddc", "shape": "dot", "title": "\u003cb\u003eperson:\uac15\uc601\uaddc\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uac15\uc601\uaddc\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:108490", "label": "108490", "shape": "dot", "title": "\u003cb\u003esymbol:108490\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 108490"}, {"font": {"color": "#e0e0e0"}, "group": "sector", "id": "sector:\uc561\ucd94\uc5d0\uc774\ud130", "label": "\uc561\ucd94\uc5d0\uc774\ud130", "shape": "dot", "title": "\u003cb\u003esector:\uc561\ucd94\uc5d0\uc774\ud130\u003c/b\u003e\u003cbr\u003ekind: sector\u003cbr\u003ename: \uc561\ucd94\uc5d0\uc774\ud130\u003cbr\u003ekrx_code: None"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uae40\ubcd1\uc218", "label": "\uae40\ubcd1\uc218", "shape": "dot", "title": "\u003cb\u003eperson:\uae40\ubcd1\uc218\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uae40\ubcd1\uc218\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\ud6c4\uc790\uc758", "label": "\ud6c4\uc790\uc758", "shape": "dot", "title": "\u003cb\u003eperson:\ud6c4\uc790\uc758\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \ud6c4\uc790\uc758\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uac10\uc18d\uae30", "label": "\uac10\uc18d\uae30", "shape": "dot", "title": "\u003cb\u003eperson:\uac10\uc18d\uae30\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uac10\uc18d\uae30\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:195940", "label": "195940", "shape": "dot", "title": "\u003cb\u003esymbol:195940\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 195940"}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:300080", "label": "300080", "shape": "dot", "title": "\u003cb\u003esymbol:300080\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 300080"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc774\uc815\uc218", "label": "\uc774\uc815\uc218", "shape": "dot", "title": "\u003cb\u003eperson:\uc774\uc815\uc218\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc774\uc815\uc218\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uac83\uc774", "label": "\uac83\uc774", "shape": "dot", "title": "\u003cb\u003eperson:\uac83\uc774\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uac83\uc774\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc815\ubd80\uc758", "label": "\uc815\ubd80\uc758", "shape": "dot", "title": "\u003cb\u003eperson:\uc815\ubd80\uc758\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc815\ubd80\uc758\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:462350", "label": "462350", "shape": "dot", "title": "\u003cb\u003esymbol:462350\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 462350"}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uae40\uc218\uc885", "label": "\uae40\uc218\uc885", "shape": "dot", "title": "\u003cb\u003eperson:\uae40\uc218\uc885\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uae40\uc218\uc885\u003cbr\u003erole: CEO\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc720\ud615\uc758", "label": "\uc720\ud615\uc758", "shape": "dot", "title": "\u003cb\u003eperson:\uc720\ud615\uc758\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc720\ud615\uc758\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uc5d4\uc9c4\uc758", "label": "\uc5d4\uc9c4\uc758", "shape": "dot", "title": "\u003cb\u003eperson:\uc5d4\uc9c4\uc758\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uc5d4\uc9c4\uc758\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "person", "id": "person:\uaddc\ubaa8\uc5d0\uc11c", "label": "\uaddc\ubaa8\uc5d0\uc11c", "shape": "dot", "title": "\u003cb\u003eperson:\uaddc\ubaa8\uc5d0\uc11c\u003c/b\u003e\u003cbr\u003ekind: person\u003cbr\u003ename: \uaddc\ubaa8\uc5d0\uc11c\u003cbr\u003erole: key_person\u003cbr\u003eorganization: "}, {"font": {"color": "#e0e0e0"}, "group": "symbol", "id": "symbol:005930", "label": "005930", "shape": "dot", "title": "\u003cb\u003esymbol:005930\u003c/b\u003e\u003cbr\u003ekind: symbol\u003cbr\u003esymbol: 005930"}, {"font": {"color": "#e0e0e0"}, "group": "event", "id": "event:catalyst:005930:005930_75ca", "label": "INDUSTRY 005930: HBM4 \uc591\uc0b0 \ubcf8\uaca9\ud654", "shape": "dot", "title": "\u003cb\u003eevent:catalyst:005930:005930_75ca\u003c/b\u003e\u003cbr\u003ekind: event\u003cbr\u003esource: catalyst\u003cbr\u003esymbol: 005930\u003cbr\u003ename: HBM4 \uc591\uc0b0 \ubcf8\uaca9\ud654\u003cbr\u003ecatalyst_type: industry\u003cbr\u003eexpected_date: 2026-05-15\u003cbr\u003eprobability: 0.7\u003cbr\u003eimpact: 8.0\u003cbr\u003edescription: \u003cbr\u003esource_tag: \u003cbr\u003eweighted_score: 4.8575994498271"}]);
+                  edges = new vis.DataSet([{"arrows": "to", "from": "person:\ubc15\ud604\uc8fc", "title": "holds", "to": "symbol:006800", "width": 5.0}, {"arrows": "to", "from": "person:\uacf5\ub3d9", "title": "holds", "to": "symbol:006800", "width": 5.0}, {"arrows": "to", "from": "person:\uae40\ubbf8\uc12d", "title": "holds", "to": "symbol:006800", "width": 5.0}, {"arrows": "to", "from": "person:\ud5c8\uc120\ud638", "title": "holds", "to": "symbol:006800", "width": 5.0}, {"arrows": "to", "from": "person:\uc2e0\uc784", "title": "holds", "to": "symbol:017670", "width": 5.0}, {"arrows": "to", "from": "person:\ucd5c\ud0dc\uc6d0", "title": "holds", "to": "symbol:017670", "width": 5.0}, {"arrows": "to", "from": "person:\uc815\uc7ac\ud5cc", "title": "holds", "to": "symbol:017670", "width": 5.0}, {"arrows": "to", "from": "person:\uc720\uc601\uc0c1", "title": "holds", "to": "symbol:017670", "width": 5.0}, {"arrows": "to", "from": "person:\uc544\uc2dc\uc544", "title": "holds", "to": "symbol:035420", "width": 5.0}, {"arrows": "to", "from": "person:\uc218\uc775\ub825\uc744", "title": "holds", "to": "symbol:035900", "width": 5.0}, {"arrows": "to", "from": "symbol:044450", "title": "belongs_to", "to": "sector:40\ub144", "width": 5.0}, {"arrows": "to", "from": "person:\ubc15\uc885\uaddc", "title": "holds", "to": "symbol:044450", "width": 5.0}, {"arrows": "to", "from": "person:\ubc84\ub9ac\uc9c0\uac00", "title": "holds", "to": "symbol:044450", "width": 5.0}, {"arrows": "to", "from": "person:\ubc15\uaddc\ud638", "title": "holds", "to": "symbol:044450", "width": 5.0}, {"arrows": "to", "from": "symbol:100090", "title": "belongs_to", "to": "sector:\ud574\uc0c1\ud48d\ub825 \ud558\ubd80\uad6c\uc870\ubb3c", "width": 5.0}, {"arrows": "to", "from": "person:\uac15\uc601\uaddc", "title": "holds", "to": "symbol:100090", "width": 5.0}, {"arrows": "to", "from": "person:\uc2e0\uc784", "title": "holds", "to": "symbol:100090", "width": 5.0}, {"arrows": "to", "from": "symbol:108490", "title": "belongs_to", "to": "sector:\uc561\ucd94\uc5d0\uc774\ud130", "width": 5.0}, {"arrows": "to", "from": "person:\uae40\ubcd1\uc218", "title": "holds", "to": "symbol:108490", "width": 5.0}, {"arrows": "to", "from": "person:\ud6c4\uc790\uc758", "title": "holds", "to": "symbol:108490", "width": 5.0}, {"arrows": "to", "from": "person:\uac10\uc18d\uae30", "title": "holds", "to": "symbol:108490", "width": 5.0}, {"arrows": "to", "from": "person:\uc774\uc815\uc218", "title": "holds", "to": "symbol:300080", "width": 5.0}, {"arrows": "to", "from": "person:\uac83\uc774", "title": "holds", "to": "symbol:300080", "width": 5.0}, {"arrows": "to", "from": "person:\ubc84\ub9ac\uc9c0\uac00", "title": "holds", "to": "symbol:300080", "width": 5.0}, {"arrows": "to", "from": "person:\uc815\ubd80\uc758", "title": "holds", "to": "symbol:300080", "width": 5.0}, {"arrows": "to", "from": "person:\uae40\uc218\uc885", "title": "holds", "to": "symbol:462350", "width": 5.0}, {"arrows": "to", "from": "person:\uc720\ud615\uc758", "title": "holds", "to": "symbol:462350", "width": 5.0}, {"arrows": "to", "from": "person:\uc5d4\uc9c4\uc758", "title": "holds", "to": "symbol:462350", "width": 5.0}, {"arrows": "to", "from": "person:\uaddc\ubaa8\uc5d0\uc11c", "title": "holds", "to": "symbol:462350", "width": 5.0}, {"arrows": "to", "from": "event:catalyst:005930:005930_75ca", "title": "catalyst_for", "to": "symbol:005930", "width": 2.42879972491355}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

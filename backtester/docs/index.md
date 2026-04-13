@@ -3,8 +3,8 @@
 **AI-driven quant trading terminal** with Walk-Forward OOS validation,
 Capital Ladder-based position graduation, and multi-broker support (KIS, Alpaca, IBKR coming).
 
-[![CI](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/ci.yml)
-[![Security](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/security.yml/badge.svg)](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/security.yml)
+[![CI](https://github.com/pollmap/luxon-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/pollmap/luxon-terminal/actions/workflows/ci.yml)
+[![Security](https://github.com/pollmap/luxon-terminal/actions/workflows/security.yml/badge.svg)](https://github.com/pollmap/luxon-terminal/actions/workflows/security.yml)
 [![PyPI](https://img.shields.io/pypi/v/luxon-terminal.svg)](https://pypi.org/project/luxon-terminal/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -66,7 +66,7 @@ See [Installation](getting-started/installation.md) and
 
 ## License
 
-MIT — see [LICENSE](https://github.com/YOUR_ORG/luxon-terminal/blob/main/backtester/LICENSE).
+MIT — see [LICENSE](https://github.com/pollmap/luxon-terminal/blob/main/backtester/LICENSE).
 
 **Financial software disclaimer**: This project is research tooling, not
 investment advice. Always validate against your broker's specs before live

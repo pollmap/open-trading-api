@@ -16,9 +16,15 @@ from kis_backtest.providers.upbit.models import (
     UpbitOrderSide,
     UpbitOrderType,
 )
+from kis_backtest.providers.upbit.brokerage import (
+    UpbitBrokerageProvider,
+    UpbitPriceAdapter,
+)
 
 __all__ = [
     "UpbitClient",
+    "UpbitBrokerageProvider",
+    "UpbitPriceAdapter",
     "UpbitMarket",
     "UpbitCandle",
     "UpbitTicker",

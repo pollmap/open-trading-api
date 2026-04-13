@@ -1,36 +1,29 @@
-"""Interactive Brokers (IBKR) provider — stub for v1.1.
+"""Interactive Brokers (IBKR) provider — v1.2.
 
-Full implementation requires `ib-insync` and running TWS/IB Gateway.
-Current status: API surface defined, TWS integration planned for v1.2.
+Full `BrokerageProvider` + `PriceProvider` implementation backed by
+`ib-insync` talking to TWS or IB Gateway.
+
+Install:
+    pip install ib-insync
+
+Prerequisites:
+    - TWS or IB Gateway running locally
+    - API connections enabled: Configure → API → Settings → "Enable ActiveX and Socket Clients"
+    - Trusted IP: 127.0.0.1
 
 Env vars:
     IBKR_HOST=127.0.0.1
-    IBKR_PORT=7497          # paper: 7497, live: 7496
+    IBKR_PORT=7497          # 7497=paper, 7496=live, 4002=gateway paper, 4001=gateway live
     IBKR_CLIENT_ID=1
 
-Example skeleton:
-    from ib_insync import IB, Stock, MarketOrder
-    ib = IB()
-    ib.connect(os.environ["IBKR_HOST"], int(os.environ["IBKR_PORT"]), clientId=1)
-    contract = Stock("AAPL", "SMART", "USD")
-    order = MarketOrder("BUY", 10)
-    trade = ib.placeOrder(contract, order)
+Usage:
+    from kis_backtest.providers.ibkr import IBKRBrokerageProvider, IBKRPriceAdapter
+    bro = IBKRBrokerageProvider(paper=True)
+    price = IBKRPriceAdapter(bro)
 """
-from __future__ import annotations
+from kis_backtest.providers.ibkr.brokerage import (
+    IBKRBrokerageProvider,
+    IBKRPriceAdapter,
+)
 
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-class IBKRBrokerageProvider:
-    """Placeholder. Raises at init until v1.2 integration lands."""
-
-    def __init__(self, *args, **kwargs) -> None:
-        raise NotImplementedError(
-            "IBKR provider arriving in v1.2. "
-            "Track: https://github.com/YOUR_ORG/luxon-terminal/issues?q=ibkr"
-        )
-
-
-__all__ = ["IBKRBrokerageProvider"]
+__all__ = ["IBKRBrokerageProvider", "IBKRPriceAdapter"]

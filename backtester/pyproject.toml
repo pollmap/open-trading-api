@@ -74,6 +74,16 @@ alpaca = [
     "alpaca-py>=0.21.0",
 ]
 
+# Interactive Brokers (v1.2)
+ibkr = [
+    "ib-insync>=0.9.86",
+]
+
+# Crypto exchanges (v1.2)
+crypto = [
+    "requests>=2.32.5",
+]
+
 # Documentation site
 docs = [
     "mkdocs>=1.5.0",
@@ -83,7 +93,7 @@ docs = [
 
 # 전체
 all = [
-    "luxon-terminal[exchange,viz,mcp,alpaca]",
+    "luxon-terminal[exchange,viz,mcp,alpaca,ibkr,crypto]",
 ]
 
 # 개발
@@ -98,11 +108,11 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/YOUR_ORG/luxon-terminal"
-Documentation = "https://github.com/YOUR_ORG/luxon-terminal/blob/main/backtester/ARCHITECTURE.md"
-Repository = "https://github.com/YOUR_ORG/luxon-terminal"
-Changelog = "https://github.com/YOUR_ORG/luxon-terminal/blob/main/backtester/CHANGELOG.md"
-Issues = "https://github.com/YOUR_ORG/luxon-terminal/issues"
+Homepage = "https://github.com/pollmap/luxon-terminal"
+Documentation = "https://github.com/pollmap/luxon-terminal/blob/main/backtester/ARCHITECTURE.md"
+Repository = "https://github.com/pollmap/luxon-terminal"
+Changelog = "https://github.com/pollmap/luxon-terminal/blob/main/backtester/CHANGELOG.md"
+Issues = "https://github.com/pollmap/luxon-terminal/issues"
 
 [project.scripts]
 luxon-run = "kis_backtest.luxon.terminal_cli:main"

@@ -1,0 +1,74 @@
+# Luxon Terminal stack — one-click deployment
+#
+# Usage:
+#   cp .env.example .env   # fill credentials
+#   docker compose up -d
+#
+# Services:
+#   - luxon: main trading loop (stage-aware interval)
+#   - dashboard: Phosphor web UI at http://localhost:7777
+#   - mcp (optional): local nexus-finance MCP server
+
+services:
+  luxon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: luxon-terminal:latest
+    container_name: luxon-terminal
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - LUXON_HOME=/data/.luxon
+      - PYTHONIOENCODING=utf-8
+    volumes:
+      - luxon_state:/data/.luxon
+      - ./data:/app/data
+      - ./cufa_digests:/data/cufa_digests:ro
+      - ~/KIS/config:/home/luxon/KIS/config:ro
+    command: ["--symbols", "005930", "000660", "035420"]
+    networks:
+      - luxon_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "from kis_backtest.luxon import LuxonTerminal"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  dashboard:
+    image: luxon-terminal:latest
+    container_name: luxon-dashboard
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "7777:7777"
+    volumes:
+      - luxon_state:/data/.luxon:ro
+    entrypoint: ["python", "scripts/luxon_server.py"]
+    networks:
+      - luxon_net
+    depends_on:
+      luxon:
+        condition: service_healthy
+
+  # Optional: local MCP server (uncomment if using)
+  # mcp:
+  #   image: pollmap/nexus-finance-mcp:latest
+  #   container_name: luxon-mcp
+  #   ports:
+  #     - "8100:8100"
+  #   environment:
+  #     - MCP_HOST=0.0.0.0
+  #     - MCP_PORT=8100
+  #   networks:
+  #     - luxon_net
+
+volumes:
+  luxon_state:
+    driver: local
+
+networks:
+  luxon_net:
+    driver: bridge

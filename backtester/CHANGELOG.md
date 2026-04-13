@@ -4,6 +4,47 @@ All notable changes to Luxon Terminal are documented here.
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 versions follow [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] — 2026-04-13
+
+### Added
+
+- **IBKR provider** (`kis_backtest.providers.ibkr`): `ib-insync` 기반
+  `IBKRBrokerageProvider` + `IBKRPriceAdapter`. TWS/Gateway 연결.
+- **Upbit adapter**: `UpbitBrokerageProvider` + `UpbitPriceAdapter` —
+  기존 `UpbitClient`를 `BrokerageProvider` Protocol에 맞춤.
+- **Crypto.com provider** (`kis_backtest.providers.cryptocom`): HMAC-SHA256
+  서명 기반 spot trading. `CryptoComBrokerageProvider` + `CryptoComPriceAdapter`.
+- **Docker stack**: Multi-stage `Dockerfile` (python:3.11-slim, non-root user,
+  healthcheck) + `docker-compose.yml` (luxon + dashboard + optional MCP) +
+  `.dockerignore`. 원클릭 배포 가능.
+- **i18n agent prompts** (`kis_backtest.luxon.intelligence.i18n_prompts`):
+  Tier(FAST/DEFAULT/HEAVY/LONG) × Locale(en/ko/ja/zh-CN) system prompt 매트릭스.
+- **pyproject extras**: `[ibkr]`, `[crypto]`. `[all]`에 통합.
+
+### Changed
+
+- `YOUR_ORG` placeholder → 실제 `pollmap` 조직으로 복구.
+
+## [1.1.0] — 2026-04-13
+
+### Added
+
+- **Multi-region Market enum**: KOSPI/KOSDAQ/NYSE/NASDAQ/AMEX with
+  `.region` and `.currency` properties.
+- **Alpaca provider** (`kis_backtest.providers.alpaca`): US market paper/live.
+- **IBKR stub** (promoted to full impl in v1.2).
+- **Market calendar** (`utils/market_calendar.py`): region-aware
+  `is_market_open()` + `next_open()`.
+- **Docs site** (mkdocs + Material): installation, quickstart, architecture.
+- **English README** (`README.en.md`): feature matrix comparing against
+  zipline/backtrader/QuantConnect.
+- **GitHub workflows**: `publish.yml` (OIDC trusted publishing to PyPI),
+  `docs.yml` (GitHub Pages deploy).
+
+### Changed
+
+- `cost_model.sell_tax_rate()` returns 0 for US markets (no STT).
+
 ## [1.0.0] — 2026-04-13
 
 ### Added
@@ -69,5 +110,5 @@ versions follow [Semantic Versioning](https://semver.org/).
 - Virtuous feedback loops (BREAK1/2/3).
 - 907 tests PASS baseline.
 
-[Unreleased]: https://github.com/YOUR_ORG/luxon-terminal/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/YOUR_ORG/luxon-terminal/releases/tag/v1.0.0
+[Unreleased]: https://github.com/pollmap/luxon-terminal/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/pollmap/luxon-terminal/releases/tag/v1.0.0

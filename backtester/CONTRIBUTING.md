@@ -5,7 +5,7 @@
 ## 개발 환경 셋업
 
 ```bash
-git clone https://github.com/YOUR_ORG/luxon-terminal.git
+git clone https://github.com/pollmap/luxon-terminal.git
 cd luxon-terminal/backtester
 
 # 의존성

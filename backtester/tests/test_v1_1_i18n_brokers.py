@@ -147,9 +147,8 @@ def test_alpaca_import_surface():
 # ── IBKR stub ──────────────────────────────────────────────
 
 
-def test_ibkr_provider_stub_raises():
-    """v1.2 전까지 명시적 NotImplementedError."""
+def test_ibkr_provider_now_importable():
+    """v1.2에서 실구현됨 — import OK, TWS 없으면 ImportError/ConnectionError."""
     from kis_backtest.providers.ibkr import IBKRBrokerageProvider
-
-    with pytest.raises(NotImplementedError, match="v1.2"):
-        IBKRBrokerageProvider()
+    assert IBKRBrokerageProvider is not None
+    # TWS 연결 시도 없이 class만 확인 (실연결 테스트는 integration 마커)

@@ -3,7 +3,7 @@
 > AI-driven quant trading terminal with Walk-Forward OOS validation,
 > Capital Ladder graduation, and multi-broker support.
 
-[![CI](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_ORG/luxon-terminal/actions/workflows/ci.yml)
+[![CI](https://github.com/pollmap/luxon-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/pollmap/luxon-terminal/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/luxon-terminal.svg)](https://pypi.org/project/luxon-terminal/)
 [![Python](https://img.shields.io/pypi/pyversions/luxon-terminal.svg)](https://pypi.org/project/luxon-terminal/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -76,7 +76,7 @@ BREAK3   TA signal     →  accuracy log  →  conviction probability
 
 ## Documentation
 
-- **Full docs**: https://YOUR_ORG.github.io/luxon-terminal/
+- **Full docs**: https://pollmap.github.io/luxon-terminal/
 - [Architecture](ARCHITECTURE.md)
 - [Security](SECURITY.md)
 - [Contributing](CONTRIBUTING.md)

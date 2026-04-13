@@ -26,7 +26,7 @@ pip install "luxon-terminal[dev]"        # pytest + ruff + mypy + bandit
 ## From source
 
 ```bash
-git clone https://github.com/YOUR_ORG/luxon-terminal.git
+git clone https://github.com/pollmap/luxon-terminal.git
 cd luxon-terminal/backtester
 pip install -e ".[dev]"
 pytest tests/ -q
@@ -70,4 +70,4 @@ python -c "from kis_backtest.luxon import LuxonTerminal, __version__; print(__ve
 === "IBKR (v1.2)"
 
     Interactive Brokers provider is planned for v1.2.
-    Track progress: [issue tracker](https://github.com/YOUR_ORG/luxon-terminal/issues).
+    Track progress: [issue tracker](https://github.com/pollmap/luxon-terminal/issues).
