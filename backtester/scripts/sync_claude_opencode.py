@@ -48,7 +48,12 @@ def sync_mcp_servers(*, dry_run: bool) -> bool:
     existing = opencode_cfg.setdefault("mcp", {})
     changed = False
 
+    # 제외 목록 — 수동 유지 필요한 서버 (venv 경로 등 특수 설정)
+    SKIP = {"gitlawb", "career-ops-kr"}
+    # 공식 OpenCode 스키마: command=[cmd, ...args] 단일 배열, environment(env 아님), enabled/timeout 유효
     for name, spec in claude_cfg.get("mcpServers", {}).items():
+        if name in SKIP:
+            continue
         if spec.get("type") == "http":
             new_spec = {"type": "remote", "url": spec["url"], "enabled": True}
         elif "command" in spec:
