@@ -58,6 +58,7 @@ class CatalystType(str, Enum):
     DIVIDEND = "dividend"          # 배당 / 자사주 매입
     MANAGEMENT = "management"      # 경영진 변경 / 지배구조
     VALUATION = "valuation"        # 밸류에이션 리레이팅
+    TECHNICAL = "technical"        # 기술적 지표 신호 (RSI/MACD/Bollinger)
 
 
 # 유형별 기본 영향도 범위 가이드 (참고용)
@@ -68,6 +69,7 @@ TYPE_IMPACT_GUIDE: Dict[CatalystType, str] = {
     CatalystType.INDUSTRY: "±3~8 (구조적 변화)",
     CatalystType.MACRO: "±2~6 (민감도)",
     CatalystType.DIVIDEND: "+2~5 (수익률)",
+    CatalystType.TECHNICAL: "±2~7 (신호 강도)",
     CatalystType.MANAGEMENT: "±3~7 (신임도)",
     CatalystType.VALUATION: "+2~6 (갭 크기)",
 }

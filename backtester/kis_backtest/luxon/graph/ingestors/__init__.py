@@ -8,6 +8,10 @@ from kis_backtest.luxon.graph.ingestors.cufa_ingestor import (
     CufaReportDigest,
 )
 from kis_backtest.luxon.graph.ingestors.phase1_ingestor import Phase1Ingestor
+from kis_backtest.luxon.graph.ingestors.ta_signal_ingestor import (
+    TASignalIngestor,
+    TASignal,
+)
 
 __all__ = [
     "Phase1Ingestor",
@@ -15,4 +19,6 @@ __all__ = [
     "CorrelatedIngestor",
     "CufaIngestor",
     "CufaReportDigest",
+    "TASignalIngestor",
+    "TASignal",
 ]
