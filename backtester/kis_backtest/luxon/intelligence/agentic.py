@@ -89,19 +89,33 @@ def agentic_run(
     tools = collect_tools(mcp_servers)
     tool_schema = tools_to_openai_format(tools)
 
+    import logging as _lg
+    _logger = _lg.getLogger(__name__)
+    if not tools:
+        _logger.warning(
+            "agentic_run: tools=[] — MCP 서버 비활성 또는 collect_tools 실패. "
+            "tool_calls=0 확실. mcp_servers=%s", mcp_servers
+        )
+    else:
+        _logger.info("agentic_run: tools=%d, servers=%s", len(tools), sorted({t.server for t in tools}))
+
     # 서버별 client 재사용
     clients: dict[str, MCPClient] = {}
     server_names = {t.server for t in tools}
     for s in server_names:
         clients[s] = MCPClient(get_server(s))
 
+    tool_names_hint = ", ".join(sorted({t.name for t in tools})[:8]) if tools else "(없음)"
     sys_prompt = system or (
-        "너는 Luxon AI 에이전트다. 사용자 질문에 답하기 위해 MCP tool을 활용하라.\n"
-        "규칙:\n"
-        "- 필요한 tool만 호출하라. 불필요한 호출 금지.\n"
-        "- tool 결과를 받으면 사용자 언어(한국어)로 명확히 요약하라.\n"
-        "- 정보가 충분하면 즉시 답하라. 더 필요하면 추가 tool 호출.\n"
-        "- 도구 결과에 없는 정보는 추측하지 말고 '확인 필요'로 표기."
+        "너는 Luxon AI 퀀트 에이전트다. 금융 데이터 질문에 답하려면 "
+        "**반드시 먼저 MCP tool을 호출하여 실데이터를 수집한 뒤** 답하라.\n"
+        "\n"
+        "강제 규칙 (위반 시 실패):\n"
+        "1. 데이터 조회/시세/재무/뉴스 질문은 tool 호출 없이 답하지 마라. 추측·할루시네이션 절대 금지.\n"
+        "2. 최소 1회 이상 tool을 호출한 뒤 최종 답변을 작성하라.\n"
+        "3. tool 결과에 없는 수치는 '확인 필요'로 표기.\n"
+        "4. 최종 답변은 한국어 + 요청된 JSON 스키마 정확히 준수.\n"
+        f"\n사용 가능한 tool 예시: {tool_names_hint}"
     )
 
     messages: list[dict[str, Any]] = [

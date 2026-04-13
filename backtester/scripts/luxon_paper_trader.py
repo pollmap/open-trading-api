@@ -26,9 +26,20 @@ logger = logging.getLogger("luxon.paper")
 
 
 def load_ticket(path: Path) -> list[dict[str, Any]]:
+    """티켓 JSON 로드. 3가지 형태 수용:
+    - list[dict]: pre_market/intraday 배열
+    - dict with tomorrow_watchlist: post_market 복기
+    - dict single: 단일 티켓
+    """
     data = json.loads(path.read_text(encoding="utf-8"))
-    items = data if isinstance(data, list) else [data]
-    return [it for it in items if isinstance(it, dict)]
+    if isinstance(data, list):
+        return [it for it in data if isinstance(it, dict)]
+    if isinstance(data, dict):
+        watchlist = data.get("tomorrow_watchlist")
+        if isinstance(watchlist, list):
+            return [it for it in watchlist if isinstance(it, dict)]
+        return [data]
+    return []
 
 
 def extract_buys(items: list[dict[str, Any]]) -> list[dict[str, Any]]:

@@ -118,28 +118,47 @@ def should_run(phase: str, *, force: bool) -> bool:
 # ── 프롬프트 생성 ─────────────────────────────────────────────────
 
 
+_TICKET_SCHEMA_NOTE = (
+    "⚠ 반드시 먼저 MCP tool(nexus_finance__*, kis_backtest__*)을 호출해 실데이터 수집 후 작성.\n"
+    "⚠ 모든 종목 항목은 다음 필드 필수: "
+    '{"ticker": "6자리코드", "action": "BUY|WATCH|AVOID", '
+    '"rationale": "근거 1문장", "position_size_pct": 1~10, '
+    '"event": "SPIKE|DROP|KILL_NEAR|NEWS|NORMAL", "detail": "추가 설명"}.\n'
+    "⚠ action=BUY 만 페이퍼 주문 발주됨. 확신 없으면 WATCH 사용.\n"
+    "⚠ position_size_pct는 계좌 대비 포지션 비율(% 정수, 1~10 권장)."
+)
+
 PROMPTS_BY_PHASE = {
-    "pre_market": """장 시작 전 스캔 (매시간).
+    "pre_market": f"""장 시작 전 스캔 (매시간).
 이전 일봉 데이터 기준:
 - KOSPI200 중 모멘텀 상위 5종목 (가격 변동 + 거래량)
 - 주요 매크로 이벤트 (환율/금리/원자재) 변화
 - 각 종목별 진입 후보 여부 판단
-JSON 배열로 반환: [{"ticker": "...", "rationale": "...", "action": "BUY|WATCH|AVOID"}]""",
 
-    "intraday": """장중 실시간 스캔 (매시간).
+{_TICKET_SCHEMA_NOTE}
+
+출력: JSON 배열만, 설명/주석 금지.""",
+
+    "intraday": f"""장중 실시간 스캔 (매시간).
 현재 시점 기준:
 - 관심 종목(KOSPI200 상위 10) 가격/거래량 확인
 - 급등락 (±3% 이상) 발생 종목 체크
 - Kill Condition 임박 종목 (손절가 -5% 이내) 알림
 - 매크로 뉴스 급변 사항
-JSON: [{"ticker": "...", "event": "SPIKE|DROP|KILL_NEAR|NEWS", "detail": "..."}]""",
 
-    "post_market": """장 마감 후 복기 (Simons 5번 원칙: 실패 = 데이터).
+{_TICKET_SCHEMA_NOTE}
+
+출력: JSON 배열만, 설명/주석 금지.""",
+
+    "post_market": f"""장 마감 후 복기 (Simons 5번 원칙: 실패 = 데이터).
 오늘 데이터 요약:
 - 시가총액 상위 20 종목 일봉 요약 (시/고/저/종/거래량)
 - 어떤 시그널이 맞았나 / 틀렸나
 - 내일 관찰 대상 3종목 + 근거
-JSON: {"market_summary": "...", "hits": [...], "misses": [...], "tomorrow_watchlist": [...]}""",
+
+{_TICKET_SCHEMA_NOTE}
+
+출력: JSON 객체, 루트는 {{"market_summary": "...", "hits": [...], "misses": [...], "tomorrow_watchlist": [티켓항목배열]}}. tomorrow_watchlist는 위 티켓 스키마 배열.""",
 }
 
 
