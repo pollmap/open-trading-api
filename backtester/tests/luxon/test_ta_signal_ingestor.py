@@ -22,8 +22,18 @@ from kis_backtest.portfolio.catalyst_tracker import CatalystTracker, CatalystTyp
 # ── Fake MCP (TA 도구 전용) ─────────────────────────────────────────
 
 
+_FAKE_OHLCV = [
+    {"date": f"2026-01-{i+1:02d}", "open": 100, "high": 105, "low": 95, "close": 100 + i, "volume": 1000}
+    for i in range(40)
+]
+
+
 class FakeMCPTA:
-    """ta_rsi / ta_macd / ta_bollinger 응답을 주입할 수 있는 Fake."""
+    """ta_rsi / ta_macd / ta_bollinger 응답을 주입할 수 있는 Fake.
+
+    stocks_history 는 항상 더미 OHLCV 40rows 반환.
+    실제 MCP ta_* 는 parsed data dict 직접 반환 (unit 테스트용).
+    """
 
     def __init__(
         self,
@@ -40,6 +50,9 @@ class FakeMCPTA:
 
     async def _call_vps_tool(self, tool_name: str, arguments: dict | None = None) -> Any:
         self.calls.append((tool_name, arguments or {}))
+        # stocks_history: 항상 더미 OHLCV 반환 (신규 2단계 파이프라인 지원)
+        if tool_name == "stocks_history":
+            return {"success": True, "data": _FAKE_OHLCV}
         if self._raise_on in ("all", tool_name.replace("ta_", "")):
             raise RuntimeError(f"Fake error: {tool_name}")
         if tool_name == "ta_rsi":

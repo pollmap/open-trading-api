@@ -111,27 +111,47 @@ class TASignalIngestor:
     # ── 내부 로직 ────────────────────────────────────────────────────
 
     async def _fetch_and_parse(self, mcp: Any, symbol: str) -> List[TASignal]:
-        """MCP 3종 호출 → TASignal 리스트."""
+        """MCP 3종 호출 → TASignal 리스트.
+
+        nexus-finance-mcp ta_rsi/ta_macd/ta_bollinger 는 data 배열(OHLCV dict) 입력.
+        1단계: stocks_history 로 OHLCV 수집 → 2단계: ta_* 계산기에 전달.
+        """
+        # ── 1. 가격 데이터 수집 ─────────────────────────────────────
+        ohlcv: list = []
+        try:
+            hist = await mcp._call_vps_tool(
+                "stocks_history",
+                {"stock_code": symbol, "limit": 40, "interval": "daily"},
+            )
+            if isinstance(hist, dict) and hist.get("success"):
+                ohlcv = hist.get("data", [])
+            logger.debug("[TA] %s OHLCV %d rows", symbol, len(ohlcv))
+        except Exception as e:
+            logger.debug("[TA] stocks_history 실패 %s: %s", symbol, e)
+
+        if not ohlcv:
+            return []
+
         signals: List[TASignal] = []
 
-        # 1. RSI
+        # ── 2. RSI ──────────────────────────────────────────────────
         try:
-            rsi_data = await mcp._call_vps_tool("ta_rsi", {"ticker": symbol})
-            signals.extend(self._parse_rsi(rsi_data))
+            rsi_res = await mcp._call_vps_tool("ta_rsi", {"data": ohlcv, "period": 14})
+            signals.extend(self._parse_rsi(rsi_res))
         except Exception as e:
             logger.debug("[TA] RSI fetch 실패 %s: %s", symbol, e)
 
-        # 2. MACD
+        # ── 3. MACD ─────────────────────────────────────────────────
         try:
-            macd_data = await mcp._call_vps_tool("ta_macd", {"ticker": symbol})
-            signals.extend(self._parse_macd(macd_data))
+            macd_res = await mcp._call_vps_tool("ta_macd", {"data": ohlcv})
+            signals.extend(self._parse_macd(macd_res))
         except Exception as e:
             logger.debug("[TA] MACD fetch 실패 %s: %s", symbol, e)
 
-        # 3. Bollinger
+        # ── 4. Bollinger ────────────────────────────────────────────
         try:
-            bb_data = await mcp._call_vps_tool("ta_bollinger", {"ticker": symbol})
-            signals.extend(self._parse_bollinger(bb_data))
+            bb_res = await mcp._call_vps_tool("ta_bollinger", {"data": ohlcv})
+            signals.extend(self._parse_bollinger(bb_res))
         except Exception as e:
             logger.debug("[TA] Bollinger fetch 실패 %s: %s", symbol, e)
 
@@ -139,15 +159,30 @@ class TASignalIngestor:
 
     @staticmethod
     def _parse_rsi(data: Dict) -> List[TASignal]:
-        """RSI 데이터 → TASignal."""
-        rsi = _first(data, _RSI_KEYS)
-        if rsi is None:
-            # data가 list면 최신 값
-            if isinstance(data, list) and data:
+        """RSI 데이터 → TASignal.
+
+        nexus-finance-mcp ta_rsi 응답 구조:
+            {"success": True, "latest_value": 39.24, "signal": "neutral", ...}
+        """
+        rsi = None
+
+        # MCP 실제 응답 구조 우선
+        if isinstance(data, dict) and data.get("success"):
+            rsi_raw = data.get("latest_value")
+            if rsi_raw is not None:
                 try:
-                    rsi = float(data[-1].get("rsi", data[-1].get("value", 0)))
-                except Exception:
-                    return []
+                    rsi = float(rsi_raw)
+                except (TypeError, ValueError):
+                    pass
+
+        # fallback: 기존 키 탐색 (테스트/레거시 호환)
+        if rsi is None:
+            rsi = _first(data, _RSI_KEYS)
+        if rsi is None and isinstance(data, list) and data:
+            try:
+                rsi = float(data[-1].get("rsi", data[-1].get("value", 0)))
+            except Exception:
+                return []
         if rsi is None:
             return []
 
@@ -163,14 +198,40 @@ class TASignalIngestor:
                 description=f"RSI={rsi:.1f} > 70: 기술적 과매수 조정 신호",
                 impact=-6.0, probability=0.70, source="RSI",
             )]
-        # 중립 (30~70): 신호 없음
         return []
 
     @staticmethod
     def _parse_macd(data: Dict) -> List[TASignal]:
-        """MACD 데이터 → TASignal. 골든/데드 크로스 감지."""
-        macd = _first(data, _MACD_KEYS)
-        signal = _first(data, _SIGNAL_KEYS)
+        """MACD 데이터 → TASignal. 골든/데드 크로스 감지.
+
+        nexus-finance-mcp ta_macd 응답 구조:
+            {"success": True, "latest": {"macd": 3149.4, "signal": None, ...}, ...}
+        """
+        macd = signal = None
+
+        # MCP 실제 응답 구조 우선
+        if isinstance(data, dict) and data.get("success"):
+            latest = data.get("latest") or {}
+            if isinstance(latest, dict):
+                m = latest.get("macd")
+                s = latest.get("signal")
+                if m is not None:
+                    try:
+                        macd = float(m)
+                    except (TypeError, ValueError):
+                        pass
+                if s is not None:
+                    try:
+                        signal = float(s)
+                    except (TypeError, ValueError):
+                        pass
+
+        # fallback: 기존 키 탐색
+        if macd is None:
+            macd = _first(data, _MACD_KEYS)
+        if signal is None:
+            signal = _first(data, _SIGNAL_KEYS)
+
         if macd is None or signal is None:
             return []
 
@@ -190,10 +251,37 @@ class TASignalIngestor:
 
     @staticmethod
     def _parse_bollinger(data: Dict) -> List[TASignal]:
-        """Bollinger Band 데이터 → TASignal. 밴드 이탈 감지."""
-        price = _first(data, _PRICE_KEYS)
-        upper = _first(data, _BB_UPPER_KEYS)
-        lower = _first(data, _BB_LOWER_KEYS)
+        """Bollinger Band 데이터 → TASignal. 밴드 이탈 감지.
+
+        nexus-finance-mcp ta_bollinger 응답 구조:
+            {"success": True, "latest": {"upper": 215313, "lower": 168326, "close": 201500}, ...}
+        """
+        price = upper = lower = None
+
+        # MCP 실제 응답 구조 우선
+        if isinstance(data, dict) and data.get("success"):
+            latest = data.get("latest") or {}
+            if isinstance(latest, dict):
+                for val, keys in [(price, ("close", "price")), (upper, ("upper",)), (lower, ("lower",))]:
+                    pass  # 아래에서 직접 처리
+                c = latest.get("close") or latest.get("price")
+                u = latest.get("upper") or latest.get("upper_band")
+                l = latest.get("lower") or latest.get("lower_band")
+                try:
+                    price = float(c) if c is not None else None
+                    upper = float(u) if u is not None else None
+                    lower = float(l) if l is not None else None
+                except (TypeError, ValueError):
+                    pass
+
+        # fallback: 기존 키 탐색
+        if price is None:
+            price = _first(data, _PRICE_KEYS)
+        if upper is None:
+            upper = _first(data, _BB_UPPER_KEYS)
+        if lower is None:
+            lower = _first(data, _BB_LOWER_KEYS)
+
         if price is None or upper is None or lower is None:
             return []
 
