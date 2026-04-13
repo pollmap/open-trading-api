@@ -1,6 +1,6 @@
 # Luxon AI Quant System — Architecture & Design
 
-> **버전**: v0.4α | **테스트**: 907+ PASS | **도구**: MCP 398개 | **GitHub**: pollmap/open-trading-api
+> **버전**: v0.4α | **테스트**: 907+ PASS | **도구**: MCP 398개 | **GitHub**: pollmap/luxon-terminal
 
 ---
 
@@ -748,4 +748,4 @@ tests/luxon/
 
 ---
 
-*Luxon AI Quant System v0.4α | 907+ tests | MCP 398 tools | pollmap/open-trading-api*
+*Luxon AI Quant System v0.4α | 907+ tests | MCP 398 tools | pollmap/luxon-terminal*
