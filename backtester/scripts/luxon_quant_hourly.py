@@ -230,6 +230,7 @@ def main() -> int:
     parser.add_argument("--max-steps", type=int, default=5)
     parser.add_argument("--servers", default="kis-backtest,nexus-finance")
     parser.add_argument("--skip-lean", action="store_true", help="post_market Lean 백테스트 스킵")
+    parser.add_argument("--skip-paper", action="store_true", help="페이퍼 트레이딩 훅 스킵")
     args = parser.parse_args()
 
     t = now_kst()
@@ -268,6 +269,18 @@ def main() -> int:
     )
 
     save_artifacts(run_id, phase, result, logger)
+
+    # 페이퍼 트레이딩 훅 — 티켓이 있고 intraday일 때만
+    if not args.skip_paper and phase == "intraday":
+        try:
+            from luxon_paper_trader import run_from_ticket
+            ticket_path = TICKET_DIR / f"{run_id}.json"
+            if ticket_path.exists():
+                fill = run_from_ticket(ticket_path, dry_run=True, mode="paper")
+                logger.info(f"paper: buys={len(fill.get('buys', []))}, "
+                            f"executed={len(fill.get('executed', []))}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"paper trader 스킵: {exc}")
 
     # post_market 세션이면 Lean 백테스트 추가 실행 (느림, 선택)
     if phase == "post_market" and not args.skip_lean:

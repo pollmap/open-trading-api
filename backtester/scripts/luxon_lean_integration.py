@@ -15,7 +15,7 @@ import json
 import logging
 import shutil
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -110,29 +110,56 @@ def run_lean_backtest(
         logger.error(f"Lean 모듈 import 실패: {exc}")
         return {"success": False, "error": str(exc), "runs": []}
 
+    from kis_backtest.lean.templates import MOMENTUM_MAIN_PY
+
+    today = datetime.now()
+    start_date = (today.replace(day=1) - timedelta(days=lookback_months * 31)).strftime("%Y-%m-%d")
+    end_date = today.strftime("%Y-%m-%d")
+
     runs: list[dict[str, Any]] = []
-    for ticker in tickers:
-        logger.info(f"Lean 백테스트 시작: {ticker} ({strategy}, {lookback_months}M)")
-        try:
-            # 실제 LeanProjectManager 사용 (스텁 구현)
-            run_info = {
-                "ticker": ticker,
-                "strategy": strategy,
-                "lookback_months": lookback_months,
-                "started_at": datetime.now().isoformat(),
-                "status": "queued",
-            }
-            # 실 실행은 LeanExecutor가 담당 — 여기서는 메타만 저장
-            result_path = output_dir / f"{ticker}_{strategy}.json"
-            result_path.write_text(
-                json.dumps(run_info, ensure_ascii=False, indent=2),
-                encoding="utf-8",
-            )
-            run_info["result_path"] = str(result_path)
-            runs.append(run_info)
-        except Exception as exc:  # noqa: BLE001
-            logger.error(f"{ticker} 백테스트 실패: {exc}")
-            runs.append({"ticker": ticker, "error": str(exc)})
+    run_id = f"hourly_{today.strftime('%Y%m%d_%H%M%S')}"
+
+    # 단일 프로젝트에 전체 tickers 주입 (모멘텀 랭킹)
+    try:
+        project = LeanProjectManager.create_project(
+            run_id=run_id,
+            symbols=tickers,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=10_000_000,
+            strategy_type=strategy,
+            strategy_name=f"Luxon-{strategy}-hourly",
+        )
+        # main.py 기록
+        project.main_py.write_text(MOMENTUM_MAIN_PY, encoding="utf-8")
+
+        logger.info(f"Lean 실행: {run_id} ({len(tickers)}종목, {lookback_months}M)")
+        lean_run = LeanExecutor.run(project, timeout=1800)
+
+        stats = lean_run.get_statistics() if lean_run.success else {}
+        run_info = {
+            "run_id": run_id,
+            "tickers": tickers,
+            "strategy": strategy,
+            "success": lean_run.success,
+            "duration_sec": lean_run.duration_seconds,
+            "sharpe": stats.get("Sharpe Ratio"),
+            "cagr": stats.get("Compounding Annual Return"),
+            "total_trades": stats.get("Total Trades"),
+            "drawdown": stats.get("Drawdown"),
+            "error": lean_run.error,
+            "output_dir": str(lean_run.output_dir),
+        }
+        summary_path = output_dir / f"{run_id}_summary.json"
+        summary_path.write_text(
+            json.dumps(run_info, ensure_ascii=False, indent=2, default=str),
+            encoding="utf-8",
+        )
+        run_info["summary_path"] = str(summary_path)
+        runs.append(run_info)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"Lean 실행 실패: {exc}")
+        runs.append({"run_id": run_id, "tickers": tickers, "error": str(exc)})
 
     return {"success": True, "runs": runs}
 
