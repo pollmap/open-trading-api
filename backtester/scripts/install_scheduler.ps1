@@ -25,19 +25,19 @@ $Tasks = @(
     },
     @{
         Name   = "Luxon-Hourly-Quant"
-        Script = "C:\Users\lch68\Desktop\02_NEXUS프로젝트\open-trading-api\backtester\scripts\luxon_hourly.cmd"
+        Script = "C:\Users\lch68\Desktop\open-trading-api\backtester\scripts\luxon_hourly.cmd"
         Desc   = "Luxon Quant Hourly Loop (agentic scan, Simons eval)"
         Trigger = "Hourly"
     },
     @{
         Name   = "Luxon-Monthly-Review"
-        Script = "C:\Users\lch68\Desktop\02_NEXUS프로젝트\open-trading-api\backtester\scripts\luxon_monthly.cmd"
+        Script = "C:\Users\lch68\Desktop\open-trading-api\backtester\scripts\luxon_monthly.cmd"
         Desc   = "Luxon 월간 복기 (매월 말일 18:00)"
         Trigger = "Monthly"
     },
     @{
         Name   = "Luxon-Quarterly-Review"
-        Script = "C:\Users\lch68\Desktop\02_NEXUS프로젝트\open-trading-api\backtester\scripts\luxon_quarterly.cmd"
+        Script = "C:\Users\lch68\Desktop\open-trading-api\backtester\scripts\luxon_quarterly.cmd"
         Desc   = "Luxon 분기 복기 (분기 말일 18:30)"
         Trigger = "Quarterly"
     }

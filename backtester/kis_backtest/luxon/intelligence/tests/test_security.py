@@ -37,12 +37,12 @@ class TestAuditEndpoint:
         assert a.verdict == "ok"
 
     def test_external_https_ok(self):
-        a = audit_endpoint("https://62.171.141.206:8100")
+        a = audit_endpoint("https://1.2.3.4:8100")
         assert a.verdict == "ok"
         assert a.is_external_https
 
     def test_external_http_warn(self):
-        a = audit_endpoint("http://62.171.141.206:8100")
+        a = audit_endpoint("http://1.2.3.4:8100")
         assert a.verdict == "warn"
 
 

@@ -26,7 +26,7 @@ from kis_backtest.luxon.stream.schema import (
     StalenessReport,
     TransformType,
 )
-from tests.luxon.conftest import FakeMCPProvider
+from .conftest import FakeMCPProvider
 
 
 def _build_hub(
