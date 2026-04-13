@@ -229,6 +229,7 @@ def main() -> int:
     parser.add_argument("--force", action="store_true", help="장외 시간도 실행")
     parser.add_argument("--max-steps", type=int, default=5)
     parser.add_argument("--servers", default="kis-backtest,nexus-finance")
+    parser.add_argument("--skip-lean", action="store_true", help="post_market Lean 백테스트 스킵")
     args = parser.parse_args()
 
     t = now_kst()
@@ -267,6 +268,22 @@ def main() -> int:
     )
 
     save_artifacts(run_id, phase, result, logger)
+
+    # post_market 세션이면 Lean 백테스트 추가 실행 (느림, 선택)
+    if phase == "post_market" and not args.skip_lean:
+        try:
+            from luxon_lean_integration import run_post_market_backtest
+            lean_dir = BACKTESTER / "reports" / "lean"
+            logger.info("post_market Lean 백테스트 시작 (최대 30분)")
+            lean_result = run_post_market_backtest(
+                tickets_dir=TICKET_DIR,
+                output_dir=lean_dir,
+                logger=logger,
+            )
+            logger.info(f"Lean 결과: success={lean_result.get('success')}, "
+                        f"runs={len(lean_result.get('runs', []))}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"Lean 백테스트 건너뜀: {exc}")
 
     if result is None:
         logger.error("실행 실패")
