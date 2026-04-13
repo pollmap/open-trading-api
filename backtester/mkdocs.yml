@@ -1,0 +1,85 @@
+site_name: Luxon Terminal
+site_description: AI-driven quant trading terminal with Walk-Forward OOS validation
+site_url: https://YOUR_ORG.github.io/luxon-terminal/
+repo_url: https://github.com/YOUR_ORG/luxon-terminal
+repo_name: YOUR_ORG/luxon-terminal
+edit_uri: edit/main/backtester/docs/
+
+theme:
+  name: material
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - content.code.copy
+    - content.code.annotate
+    - search.suggest
+    - search.highlight
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_source: false
+            show_root_heading: true
+            docstring_style: google
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - tables
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quickstart: getting-started/quickstart.md
+    - Configuration: getting-started/configuration.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - 7 Layers: architecture/layers.md
+    - Virtuous Loops: architecture/feedback-loops.md
+  - Guides:
+    - Paper Trading: guides/paper-trading.md
+    - Live Trading: guides/live-trading.md
+    - Walk-Forward: guides/walk-forward.md
+    - CUFA Integration: guides/cufa.md
+    - Multi-Broker: guides/brokers.md
+  - API Reference:
+    - LuxonTerminal: api/terminal.md
+    - CapitalLadder: api/capital-ladder.md
+    - RiskGateway: api/risk-gateway.md
+  - Security: security.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md

@@ -18,9 +18,22 @@ from typing import Optional
 
 
 class Market(str, Enum):
-    """한국 거래소 구분"""
+    """Global exchange markers (v1.1: multi-region support)."""
+    # Korea
     KOSPI = "KOSPI"
     KOSDAQ = "KOSDAQ"
+    # United States
+    NYSE = "NYSE"
+    NASDAQ = "NASDAQ"
+    AMEX = "AMEX"
+
+    @property
+    def region(self) -> str:
+        return "KR" if self.value in ("KOSPI", "KOSDAQ") else "US"
+
+    @property
+    def currency(self) -> str:
+        return "KRW" if self.region == "KR" else "USD"
 
 
 @dataclass(frozen=True)
@@ -88,7 +101,9 @@ class KoreaTransactionCostModel:
         self.slippage_bps = slippage_bps  # 기본 5bps (대형주 기준)
 
     def sell_tax_rate(self, market: Market = Market.KOSPI) -> float:
-        """매도 시 세금률"""
+        """매도 시 세금률 (v1.1: US 시장은 0 반환)"""
+        if market.region == "US":
+            return 0.0  # SEC fee는 sell만 0.00229% 수준, 편의상 슬리피지에 흡수
         if market == Market.KOSPI:
             return self.fees.kospi_sell_tax
         return self.fees.kosdaq_sell_tax
