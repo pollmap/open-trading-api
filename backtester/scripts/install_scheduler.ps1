@@ -15,11 +15,19 @@ $Tasks = @(
         Name   = "Luxon-FLM-NPU"
         Script = "C:\scripts\start-flm-server.cmd"
         Desc   = "FastFlowLM NPU server (qwen3.5:4b)"
+        Trigger = "AtLogOn"
     },
     @{
         Name   = "Luxon-KoboldCpp-iGPU"
         Script = "C:\scripts\start-kobold-server.cmd"
         Desc   = "KoboldCpp iGPU server (gemma4-e4b)"
+        Trigger = "AtLogOn"
+    },
+    @{
+        Name   = "Luxon-Hourly-Quant"
+        Script = "C:\Users\lch68\Desktop\02_NEXUS프로젝트\open-trading-api\backtester\scripts\luxon_hourly.cmd"
+        Desc   = "Luxon Quant Hourly Loop (agentic scan, Simons eval)"
+        Trigger = "Hourly"
     }
 )
 
@@ -42,7 +50,13 @@ foreach ($t in $Tasks) {
     }
 
     $action  = New-ScheduledTaskAction -Execute $t.Script
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
+    if ($t.Trigger -eq "Hourly") {
+        $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(5) `
+            -RepetitionInterval (New-TimeSpan -Hours 1) `
+            -RepetitionDuration (New-TimeSpan -Days 365)
+    } else {
+        $trigger = New-ScheduledTaskTrigger -AtLogOn
+    }
     $settings = New-ScheduledTaskSettingsSet `
         -AllowStartIfOnBatteries `
         -DontStopIfGoingOnBatteries `
