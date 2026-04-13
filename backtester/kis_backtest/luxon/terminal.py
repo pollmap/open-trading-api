@@ -413,35 +413,91 @@ class LuxonTerminal:
     # 루프
     # ------------------------------------------------------------------
 
-    def run_loop(self, max_cycles: Optional[int] = None) -> None:
-        """refresh_secs 간격으로 cycle() 반복 실행.
+    def run_loop(
+        self,
+        max_cycles: Optional[int] = None,
+        stage_aware_interval: bool = True,
+    ) -> None:
+        """refresh_secs 간격으로 cycle() 반복 실행 (v0.9 STEP 5 안정화).
+
+        단일 사이클 실패가 전체 루프를 죽이지 않도록 try/except로 격리.
+        KeyboardInterrupt만 상위로 전파.
 
         Args:
-            max_cycles: None이면 무한 루프. 정수이면 해당 횟수만큼 실행.
+            max_cycles: None이면 무한 루프. 정수면 해당 횟수만큼 실행.
+            stage_aware_interval: True면 CapitalLadder 단계에 따라 주기 조정
+                (PAPER=1h, SEED=4h, 그 이상=매일 장 마감 후).
         """
         if not self._initialized:
             self.boot()
 
         log.info(
-            "run_loop 시작: interval=%ds max_cycles=%s",
-            self.config.refresh_secs,
-            max_cycles,
+            "run_loop 시작: interval=%ds max_cycles=%s stage_aware=%s",
+            self.config.refresh_secs, max_cycles, stage_aware_interval,
         )
         count = 0
+        consecutive_failures = 0
         while True:
             if max_cycles is not None and count >= max_cycles:
                 log.info("run_loop 종료: max_cycles=%d 도달", max_cycles)
                 break
 
-            report = self.cycle()
-            log.info(report.summary())
+            try:
+                report = self.cycle()
+                log.info(report.summary())
+                consecutive_failures = 0
+            except KeyboardInterrupt:
+                log.info("run_loop 중단: KeyboardInterrupt")
+                raise
+            except Exception as exc:
+                consecutive_failures += 1
+                log.error(
+                    "cycle #%d 실패 (연속 %d회): %s",
+                    count + 1, consecutive_failures, exc,
+                    exc_info=True,
+                )
+                # 연속 5회 실패면 KillSwitch 활성화 후 중단
+                if consecutive_failures >= 5:
+                    log.critical(
+                        "연속 %d회 실패 — KillSwitch 활성화 후 중단",
+                        consecutive_failures,
+                    )
+                    if self._kill_switch is not None:
+                        try:
+                            self._kill_switch.activate(
+                                f"run_loop 연속 {consecutive_failures}회 실패"
+                            )
+                        except Exception:
+                            pass
+                    break
+
             count += 1
 
             if max_cycles is not None and count >= max_cycles:
                 break
 
-            log.info("다음 사이클까지 %ds 대기...", self.config.refresh_secs)
-            time.sleep(self.config.refresh_secs)
+            interval = self._resolve_interval(stage_aware_interval)
+            log.info("다음 사이클까지 %ds 대기...", interval)
+            time.sleep(interval)
+
+    def _resolve_interval(self, stage_aware: bool) -> int:
+        """CapitalLadder 단계 기반 사이클 주기 결정.
+
+        PAPER: 1h (3600s), SEED: 4h (14400s), GROWTH+: 1d (86400s).
+        stage_aware=False거나 ladder 없으면 config.refresh_secs 사용.
+        """
+        if not stage_aware or self._capital_ladder is None:
+            return self.config.refresh_secs
+        try:
+            from kis_backtest.execution.capital_ladder import Stage
+            stage = self._capital_ladder.current_stage
+            if stage == Stage.PAPER:
+                return 3600
+            if stage == Stage.SEED:
+                return 14400
+            return 86400
+        except Exception:
+            return self.config.refresh_secs
 
     # ------------------------------------------------------------------
     # 속성

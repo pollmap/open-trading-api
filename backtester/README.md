@@ -1,6 +1,40 @@
 # Backtester — AI 퀀트 운용 시스템 v0.4α
 
-> **945 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | **Luxon Terminal v0.8α** | [ARCHITECTURE.md](ARCHITECTURE.md)
+> **963 tests** | **MCP 398 tools** | **KIS + Upbit 듀얼 거래소** | **Luxon Terminal v1.0** | [ARCHITECTURE.md](ARCHITECTURE.md) | [CONTRIBUTING](CONTRIBUTING.md) | [LICENSE](LICENSE)
+
+## Luxon Terminal 자동 루프 퀵스타트
+
+```bash
+# 1. 의존성
+uv sync
+
+# 2. KIS 모의투자 키 발급 + ~/KIS/config/kis_devlp.yaml 설정
+#    (https://apiportal.koreainvestment.com/)
+
+# 3. 페이퍼 1회 사이클 (가장 안전)
+python scripts/luxon_terminal_run.py --max-cycles 1
+
+# 4. CUFA 보고서 conviction 자동 주입
+python scripts/luxon_terminal_run.py --cufa-digests ~/cufa_reports --max-cycles 1
+
+# 5. Walk-Forward 4주 검증 + CapitalLadder 자동 승급
+python scripts/run_walk_forward.py \
+    --equity-file data/equity_curve.json \
+    --auto-promote --ladder-state data/ladder_state.json
+
+# 6. Windows Task Scheduler 자동화 (관리자 PowerShell)
+.\scripts\setup_task_scheduler.ps1
+
+# 7. KIS 모의투자 실 주문 (계좌 잔고 확인 후)
+python scripts/luxon_terminal_run.py --live --max-cycles 1
+#    → paper_mode=False + kis_paper=True (모의 API)
+#    → fills/live/*.json 기록
+
+# 8. 실전 승급 (SEED 단계, 10% 자본)
+#    WF 통과 후 CapitalLadder.promote_if_wf_passed() 자동 트리거
+```
+
+자세한 계층 구조 + 선순환 3루프는 [ARCHITECTURE.md](ARCHITECTURE.md) 참조.
 
 한국투자증권 Open API 기반 **1인 AI 퀀트 운용 시스템**입니다.
 

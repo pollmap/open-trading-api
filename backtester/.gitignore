@@ -48,7 +48,15 @@ env/
 # KIS
 .master/
 KIS/
+kis_devlp.yaml
 !kis_backtest/providers/kis/
+
+# Luxon 런타임 상태 (포지션/체결/conviction)
+fills/
+data/ladder_state.json
+data/equity_curve.json
+~/.luxon/
+.luxon/
 
 # Lean workspace
 .lean-workspace/

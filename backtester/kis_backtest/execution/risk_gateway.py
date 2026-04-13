@@ -1,16 +1,18 @@
 """주문 전 리스크 게이트웨이
 
-LiveOrderExecutor가 주문을 실행하기 전 7개 체크를 수행.
+LiveOrderExecutor가 주문을 실행하기 전 9개 체크를 수행.
 prod 모드에서는 수동 승인 필수.
 
-체크리스트:
+체크리스트 (v0.9 STEP 5: SEED 단계 집중도 체크 추가):
     1. pipeline_result.risk_passed == True
     2. 총 주문금액 ≤ available_cash (마진 사용 안 함)
-    3. 단일 주문 ≤ 30% of available_cash
+    3. 단일 주문 ≤ 30% of available_cash (SEED: 5%)
     4. Rate limit: 분당 10건, 초당 2건
     5. 시장 시간 확인 (KST 09:00-15:30)
     6. DD 상태 ≠ HALT
     7. 킬 스위치 비활성
+    8. [SEED+] 종목당 포지션 비중 ≤ 5% of total_equity
+    9. [SEED+] 섹터당 총 비중 ≤ 20% of total_equity
 """
 
 from __future__ import annotations
@@ -34,6 +36,10 @@ logger = logging.getLogger(__name__)
 MAX_ORDERS_PER_MINUTE = 10
 MAX_ORDERS_PER_SECOND = 2
 MAX_SINGLE_ORDER_RATIO = 0.30  # 단일 주문 ≤ 가용현금 30%
+
+# SEED+ 단계 집중도 기본값 (CapitalLadder Stage ≥ SEED일 때 권장)
+SEED_MAX_SYMBOL_WEIGHT = 0.05   # 종목당 ≤ 5% of total_equity
+SEED_MAX_SECTOR_WEIGHT = 0.20   # 섹터당 ≤ 20% of total_equity
 
 
 @dataclass(frozen=True)
@@ -71,11 +77,24 @@ class RiskGateway:
         kill_switch: Optional[KillSwitch] = None,
         max_single_order_ratio: float = MAX_SINGLE_ORDER_RATIO,
         require_market_hours: bool = True,
+        max_symbol_weight: Optional[float] = None,
+        max_sector_weight: Optional[float] = None,
+        sector_map: Optional[dict] = None,
     ):
+        """Args:
+            max_symbol_weight: 종목당 비중 상한 (0-1). None이면 체크 스킵.
+                SEED 단계에서 0.05 권장.
+            max_sector_weight: 섹터당 비중 상한 (0-1). None이면 체크 스킵.
+                SEED 단계에서 0.20 권장.
+            sector_map: {ticker: sector} 딕셔너리. 섹터 체크 시 필수.
+        """
         self._mode = mode
         self._kill_switch = kill_switch or KillSwitch()
         self._max_single_ratio = max_single_order_ratio
         self._require_market_hours = require_market_hours
+        self._max_symbol_weight = max_symbol_weight
+        self._max_sector_weight = max_sector_weight
+        self._sector_map = sector_map or {}
         self._order_timestamps: deque[float] = deque(maxlen=MAX_ORDERS_PER_MINUTE)
 
     def check(
@@ -164,6 +183,67 @@ class RiskGateway:
             all_passed = False
         else:
             checks.append("✓ [7] Rate limit OK")
+
+        # 8. [SEED+] 종목당 비중 상한
+        total_equity = balance.total_equity if balance.total_equity > 0 else balance.available_cash
+        if self._max_symbol_weight is not None and total_equity > 0:
+            symbol_blocked: list[str] = []
+            for trade in planned_trades:
+                if trade.side != OrderSide.BUY:
+                    continue
+                weight = trade.estimated_amount / total_equity
+                if weight > self._max_symbol_weight:
+                    symbol_blocked.append(
+                        f"{trade.name}: {weight*100:.1f}% > "
+                        f"{self._max_symbol_weight*100:.1f}% 종목 상한"
+                    )
+            if symbol_blocked:
+                checks.append(
+                    f"✗ [8] 종목 집중도 초과: {len(symbol_blocked)}건"
+                )
+                blocked.extend(symbol_blocked)
+                all_passed = False
+            else:
+                checks.append(
+                    f"✓ [8] 종목 집중도 OK (≤{self._max_symbol_weight*100:.1f}%)"
+                )
+        else:
+            checks.append("— [8] 종목 집중도 체크 스킵 (PAPER 단계)")
+
+        # 9. [SEED+] 섹터당 비중 상한
+        if (
+            self._max_sector_weight is not None
+            and self._sector_map
+            and total_equity > 0
+        ):
+            sector_totals: dict[str, float] = {}
+            for trade in planned_trades:
+                if trade.side != OrderSide.BUY:
+                    continue
+                sector = self._sector_map.get(trade.symbol, "UNKNOWN")
+                sector_totals[sector] = (
+                    sector_totals.get(sector, 0.0) + trade.estimated_amount
+                )
+            sector_blocked: list[str] = []
+            for sector, amount in sector_totals.items():
+                weight = amount / total_equity
+                if weight > self._max_sector_weight:
+                    sector_blocked.append(
+                        f"{sector}: {weight*100:.1f}% > "
+                        f"{self._max_sector_weight*100:.1f}% 섹터 상한"
+                    )
+            if sector_blocked:
+                checks.append(
+                    f"✗ [9] 섹터 집중도 초과: {len(sector_blocked)}건"
+                )
+                blocked.extend(sector_blocked)
+                all_passed = False
+            else:
+                checks.append(
+                    f"✓ [9] 섹터 집중도 OK (≤{self._max_sector_weight*100:.1f}%)"
+                )
+        else:
+            checks.append("— [9] 섹터 집중도 체크 스킵 (sector_map 없음)")
 
         # prod 모드 수동 승인
         if all_passed and self._mode == "prod":
