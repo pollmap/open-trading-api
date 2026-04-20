@@ -10,7 +10,7 @@
 
 관리자 권한 PowerShell에서:
 ```powershell
-cd C:\Users\lch68\Desktop\open-trading-api\backtester
+cd <HOME>\Desktop\open-trading-api\backtester
 powershell -ExecutionPolicy Bypass -File scripts\setup_scheduler_windows.ps1
 ```
 
@@ -39,7 +39,7 @@ Unregister-ScheduledTask -TaskName "LuxonFredDaemon" -Confirm:$false
 
 ### 1. 파일 복사
 
-VPS(62.171.141.206)에서:
+VPS(<MCP_VPS_HOST>)에서:
 ```bash
 # 루트 권한
 sudo mkdir -p /opt/luxon-terminal
@@ -155,7 +155,7 @@ sudo systemctl daemon-reload
 └──────────────────────────────────────────────────────────┘
                          ↕ (이중화, 한쪽 실패해도 다른 쪽 동작)
 ┌──────────────────────────────────────────────────────────┐
-│  VPS systemd timer (62.171.141.206)                      │
+│  VPS systemd timer (<MCP_VPS_HOST>)                      │
 │  └ 매 시간 정각 → luxon-fred-daemon.service              │
 │     └ (로컬과 동일한 파이프라인)                          │
 └──────────────────────────────────────────────────────────┘
@@ -174,7 +174,7 @@ sudo systemctl daemon-reload
 
 ```bash
 # VPS MCP 헬스체크
-curl -sL http://62.171.141.206/mcp
+curl -sL http://<MCP_VPS_HOST>/mcp
 # → 405 Method Not Allowed 정상 (POST만 받음)
 ```
 

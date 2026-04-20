@@ -62,7 +62,7 @@ import 시 `kis_backtest.luxon.intelligence`가 `.env` 자동 로드. 시스템 
 모든 CLI 명령은 `backtester/` 디렉토리에서 실행:
 
 ```bash
-cd C:/Users/lch68/Desktop/02_NEXUS프로젝트/open-trading-api/backtester
+cd <HOME>/Desktop/02_NEXUS프로젝트/open-trading-api/backtester
 ```
 
 ---

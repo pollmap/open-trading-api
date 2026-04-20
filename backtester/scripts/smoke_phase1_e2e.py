@@ -114,7 +114,7 @@ async def _run_smoke() -> int:
         mcp = MCPDataProvider()
 
         # 사전 health 체크 — 서버가 죽어있으면 60초 기다릴 필요 없이 즉시 실패
-        vps_host = getattr(mcp, "_vps_host", "62.171.141.206")
+        vps_host = getattr(mcp, "_vps_host", os.environ.get("MCP_VPS_HOST", ""))
         ok, detail = _check_health(vps_host)
         if not ok:
             print(

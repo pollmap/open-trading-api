@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 # CUFA 스킬 경로 주입
-_CUFA_SKILL = Path(r"C:/Users/lch68/.claude/skills/cufa-equity-report")
+_CUFA_SKILL = Path(r"<HOME>/.claude/skills/cufa-equity-report")
 if _CUFA_SKILL.exists() and str(_CUFA_SKILL) not in sys.path:
     sys.path.insert(0, str(_CUFA_SKILL))
 

@@ -176,3 +176,6 @@ backtester/examples/output/*.py
 settings.local.json
 
 .serena/
+# Audit 2026-04-20
+kis_devlp.yaml
+backtester/out/

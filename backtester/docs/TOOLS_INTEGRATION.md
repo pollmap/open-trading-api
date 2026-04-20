@@ -66,7 +66,7 @@ contextProviders:
 {
   "mcpServers": {
     "kis-backtest": { "url": "http://127.0.0.1:3846/mcp" },
-    "nexus-finance": { "url": "https://62.171.141.206:8100/mcp",
+    "nexus-finance": { "url": "https://<MCP_VPS_HOST>:8100/mcp",
                         "headers": { "Authorization": "Bearer ${MCP_VPS_TOKEN}" } },
     "drawio": { "url": "https://mcp.draw.io/mcp" }
   }
@@ -88,7 +88,7 @@ contextProviders:
 ### Luxon Intelligence (CLI)
 
 ```bash
-cd "C:/Users/lch68/Desktop/02_NEXUS프로젝트/open-trading-api/backtester"
+cd "<HOME>/Desktop/02_NEXUS프로젝트/open-trading-api/backtester"
 
 # 7 서브명령 전부
 python -m kis_backtest.luxon.intelligence {bootstrap|health|security|bench|ask|agent|cufa}

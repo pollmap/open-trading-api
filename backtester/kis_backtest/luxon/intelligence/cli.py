@@ -96,7 +96,7 @@ def _cmd_cufa(args) -> int:
     import runpy
     from pathlib import Path
 
-    runner = Path(r"C:/Users/lch68/.claude/skills/cufa-equity-report/local_runner.py")
+    import os as _os; runner = Path(_os.environ.get("CUFA_SKILL_DIR", "")) / "local_runner.py"
     if not runner.exists():
         print(f"[ERR] local_runner.py not found at {runner}", file=sys.stderr)
         return 2

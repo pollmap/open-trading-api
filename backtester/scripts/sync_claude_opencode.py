@@ -100,11 +100,11 @@ def sync_claude_snapshot(*, dry_run: bool) -> bool:
     max_len = 8000
     excerpt = claude_content[:max_len]
     if len(claude_content) > max_len:
-        excerpt += "\n\n... [생략 — 원본: C:/Users/lch68/CLAUDE.md]"
+        excerpt += "\n\n... [생략 — 원본: <HOME>/CLAUDE.md]"
 
     snapshot = (
         f"\n\n## CLAUDE.md 자동 스냅샷\n\n"
-        f"`C:/Users/lch68/CLAUDE.md` 내용 매시간 동기화. 원본 수정 권장.\n\n"
+        f"`<HOME>/CLAUDE.md` 내용 매시간 동기화. 원본 수정 권장.\n\n"
         f"```markdown\n{excerpt}\n```\n"
     )
 

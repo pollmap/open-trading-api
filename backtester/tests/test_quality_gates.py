@@ -32,7 +32,7 @@ class TestNoHardcodedData:
         assert 'os.environ.get("MCP_VPS_HOST"' in content
 
     def test_no_hardcoded_vps_ip_in_logic(self):
-        """kis_backtest 소스에서 62.171.141.206이 fallback 외에 없는지 확인"""
+        """kis_backtest 소스에서 <MCP_VPS_HOST>이 fallback 외에 없는지 확인"""
         hardcoded_count = 0
         for py_file in BACKTESTER_ROOT.rglob("*.py"):
             # 테스트 파일은 제외 (보안 테스트가 IP를 참조할 수 있음)
@@ -41,8 +41,8 @@ class TestNoHardcodedData:
             content = py_file.read_text(encoding="utf-8")
             lines = content.splitlines()
             for i, line in enumerate(lines, 1):
-                if "62.171.141.206" in line:
-                    # fallback (os.environ.get(..., "62.171.141.206"))은 허용
+                if "<MCP_VPS_HOST>" in line:
+                    # fallback (os.environ.get(..., "<MCP_VPS_HOST>"))은 허용
                     if "environ" in line or "default" in line.lower():
                         continue
                     hardcoded_count += 1

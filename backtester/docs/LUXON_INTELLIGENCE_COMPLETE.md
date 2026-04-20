@@ -1,7 +1,7 @@
 # Luxon Intelligence 완전 해부서 (Complete Reference)
 
 > **최종 업데이트**: 2026-04-13
-> **작성자**: 이찬희 (pollmap) | Luxon AI 창업자
+> **Author**: pollmap | Luxon AI
 > **문서 버전**: v1.0 — Sprint A~H 완료 기준
 
 ---
@@ -125,7 +125,7 @@ Luxon Intelligence는 **노트북 한 대(Ryzen AI 7 350, 32GB, 50 TOPS NPU)에�
 │  ┌──────────┐   ┌────────────────┐  ┌──────────┐                          │
 │  │   KIS    │   │ Nexus Finance  │  │  drawio  │                          │
 │  │ backtest │   │   VPS MCP      │  │          │                          │
-│  │  :3846   │   │ 62.171.141.206 │  │ mcp.draw │                          │
+│  │  :3846   │   │ <MCP_VPS_HOST> │  │ mcp.draw │                          │
 │  │  loopback│   │  HTTPS Bearer  │  │   HTTPS  │                          │
 │  │          │   │   398 tools    │  │  2 tools │                          │
 │  └──────────┘   └────────────────┘  └──────────┘                          │
@@ -209,10 +209,10 @@ kis_backtest/luxon/intelligence/
 ### 3-2. 주변 파일 (CUFA 스킬 + 외부)
 
 ```
-C:/Users/lch68/.claude/skills/cufa-equity-report/
+<HOME>/.claude/skills/cufa-equity-report/
 └── local_runner.py             # ★ Claude-less CUFA 빌드 CLI (120 LOC)
 
-C:/Users/lch68/Desktop/02_NEXUS프로젝트/open-trading-api/backtester/
+<HOME>/Desktop/02_NEXUS프로젝트/open-trading-api/backtester/
 ├── samples/
 │   ├── __init__.py
 │   └── hhi_config.py           # ★ HD현대중공업 CUFA 템플릿 (187 LOC)
@@ -347,7 +347,7 @@ class ChatResult:
 @dataclass(frozen=True)
 class MCPServerInfo:
     name: str                    # "nexus-finance"
-    url: str                     # "https://62.171.141.206:8100"
+    url: str                     # "https://<MCP_VPS_HOST>:8100"
     transport: str               # "http" | "streamable-http" | "stdio"
     default_tier: Tier           # 이 서버 호출 시 기본 LLM 티어
     token_env: str | None        # "MCP_VPS_TOKEN"
@@ -803,7 +803,7 @@ if sys.platform == "win32":
 **sys.path 주입**:
 ```python
 SKILL_DIR = Path(__file__).parent
-BACKTESTER_DIR = Path(r"C:/Users/lch68/Desktop/.../backtester")
+BACKTESTER_DIR = Path(r"<HOME>/Desktop/.../backtester")
 sys.path.insert(0, str(SKILL_DIR))      # evaluator/ trade_ticket/ import
 sys.path.insert(0, str(BACKTESTER_DIR)) # kis_backtest.luxon.intelligence import
 ```
@@ -849,7 +849,7 @@ def run(config_path, out_path, *, heavy_thesis, max_repair_iterations, skip_heal
 | 서버 | URL | 인증 | 도구 수 |
 |------|-----|------|---------|
 | kis-backtest | `http://127.0.0.1:3846` | 없음 | 다수 |
-| nexus-finance | `https://62.171.141.206:8100` | Bearer (`MCP_VPS_TOKEN`) | 398 |
+| nexus-finance | `https://<MCP_VPS_HOST>:8100` | Bearer (`MCP_VPS_TOKEN`) | 398 |
 | drawio | `http://127.0.0.1:8420` | 없음 | 2 |
 
 ### 8-3. MCP JSON-RPC 메서드
@@ -908,7 +908,7 @@ python -m kis_backtest.luxon.intelligence cufa --config PATH --out PATH [--heavy
 |--------|--------|------|------|
 | `MCP_VPS_TOKEN` | - | Y (VPS MCP 사용 시) | Nexus Finance Bearer 토큰 |
 | `KIS_BACKTEST_MCP_URL` | `http://127.0.0.1:3846` | N | kis-backtest MCP 오버라이드 |
-| `NEXUS_MCP_URL` | `https://62.171.141.206:8100` | N | VPS MCP URL 오버라이드 |
+| `NEXUS_MCP_URL` | `https://<MCP_VPS_HOST>:8100` | N | VPS MCP URL 오버라이드 |
 | `DRAWIO_MCP_URL` | `http://127.0.0.1:8420` | N | drawio MCP 오버라이드 |
 | `LUXON_LLM_FAST_URL` | `http://127.0.0.1:52625/v1` | N | FLM URL 오버라이드 |
 | `LUXON_LLM_DEFAULT_URL` | `http://127.0.0.1:11434` | N | Ollama URL 오버라이드 |

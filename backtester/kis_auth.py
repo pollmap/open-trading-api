@@ -31,7 +31,7 @@ from Crypto.Util.Padding import unpad
 
 
 def clearConsole():
-    return os.system("cls" if os.name in ("nt", "dos") else "clear")
+    print("\033c", end="")  # ANSI clear, shell-injection safe
 
 key_bytes = 32
 config_root = os.path.join(os.path.expanduser("~"), "KIS", "config")

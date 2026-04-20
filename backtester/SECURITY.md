@@ -11,7 +11,7 @@
 
 **Do NOT open a public issue for security vulnerabilities.**
 
-Email: **security@luxon-terminal.example** (replace with your org address)
+Email: **GitHub Private Vulnerability Reporting (Security tab → Report a vulnerability)
 or use GitHub's [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability).
 
 Response SLA:

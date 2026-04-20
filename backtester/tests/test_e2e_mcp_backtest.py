@@ -1,7 +1,7 @@
 """E2E MCP 통합 테스트 — 실제 서버 호출
 
 실행 조건:
-- VPS MCP 서버 가동 중 (62.171.141.206 또는 MCP_VPS_HOST)
+- VPS MCP 서버 가동 중 (<MCP_VPS_HOST> 또는 MCP_VPS_HOST)
 - KIS Backtest MCP 서버 가동 중 (127.0.0.1:3846)
 
 실행 방법:
